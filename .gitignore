@@ -1,3 +1,13 @@
+# Save files
+tf/data/
+
+# virtual environments
+venv/
+virtual_env/
+env/
+tf_env/
+pyt_env/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

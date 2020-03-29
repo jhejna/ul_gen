@@ -1,0 +1,7 @@
+name: tf_ul_procgen
+dependencies:
+  - tensorflow=1.15
+  - pip
+  - pip:  
+    - procgen
+    - stable-baselines==2.10.0
