@@ -22,7 +22,7 @@ parser.add_argument("--datapath",type=str,default="")
 parser.add_argument("--zdim", type=int, default=32)
 parser.add_argument("--bs", type=int, default=32)
 parser.add_argument("--vae_beta", type=int, default=1,
-                    help="beta weight term in vae loss")
+					help="beta weight term in vae loss")
 parser.add_argument("--lr_vae", type=float, default=0.001)
 parser.add_argument("--n_epochs_full_vae", type=int, default=100)
 parser.add_argument("--vae_path", help="path to load trained vae from",type=str,
@@ -30,7 +30,7 @@ parser.add_argument("--vae_path", help="path to load trained vae from",type=str,
 
 # Policy Hyperparameters
 parser.add_argument("--env", type=str, default="block",
-                    help="block")
+					help="block")
 parser.add_argument("--n_epochs_policy", type=int, default=100)
 
 args = parser.parse_args()
@@ -47,7 +47,7 @@ if not args.vae_path:
 # Configure tensorboard
 configure('%s/var_log' % args.savepath, flush_secs=5)
 with open('%s/params.json' % args.savepath, 'w') as fp:
-    json.dump(args, fp, indent=4, sort_keys=True)
+	json.dump(args, fp, indent=4, sort_keys=True)
 
 # Load Data
 data = np.load(args.datapath)
@@ -69,10 +69,10 @@ if n_epochs_full_vae > 0:
 			vae_opt.step()
 
 			if it % (n_batch//5) == 0:
-    			log_value('vae_loss', loss, it + n_batch * n)
-    			log_value('kl_loss', kld, it + n_batch * n)
-    			log_value('kl_loss', kld, it + n_batch * n)
-	    		print("Train Loss: %.3f   Recon: %.3f   KLD: %.3f"%(loss.item(), recon_loss.item(), kld.item()))
+				log_value('vae_loss', loss, it + n_batch * n)
+				log_value('kl_loss', kld, it + n_batch * n)
+				log_value('kl_loss', kld, it + n_batch * n)
+				print("Train Loss: %.3f   Recon: %.3f   KLD: %.3f"%(loss.item(), recon_loss.item(), kld.item()))
 
 		torch.save(vae.state_dict(), '%s/vae-%d' % (args.savepath, (epoch // 5)*5))
 		log_images_vae(x[:20],vae,args.savepath,n)
@@ -82,7 +82,7 @@ if n_epochs_full_vae > 0:
 
 
 
-    
+	
 
 
 
