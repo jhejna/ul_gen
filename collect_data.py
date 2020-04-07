@@ -1,17 +1,24 @@
 from procgen import ProcgenEnv
 import gym
+import numpy as np
 
 # env = ProcgenEnv(num_envs=1, env_name="coinrun")
 save_path = '/home/karam/Downloads/procgen.npy'
-data = []
-env = gym.make("procgen:procgen-coinrun-v0")
-obs = env.reset()
-for _ in range(1000):
-	env.render()
-	ac = env.action_space.sample()
-	obs, reward, done, info = env.step(ac)
-	print(type(obs))
-	data.append([obs, [reward, done, info]])
-	
+n_resets = 2
+traj = 1000
+all_data = []
 
-np.save(save_path, data)
+for _ in range(n_resets):
+	env = gym.make("procgen:procgen-coinrun-v0")
+	obs = env.reset()
+
+	for _ in range(traj):
+		env.render()
+		ac = env.action_space.sample()
+		obs, reward, done, info = env.step(ac)
+		label = {'reward': reward, 'done': done, 'info': info}
+		all_data.append((obs.transpose(2,0,1), label))
+		if done:
+			break
+
+np.save(save_path, all_data)

@@ -10,7 +10,7 @@ class Encoder(nn.Module):
 
 		self.zdim = zdim
 		self.h = img_height
-		final_dim = (h//8)**2
+		final_dim = (self.h//8)**2
 
 
 		self.main = nn.Sequential(
@@ -45,10 +45,10 @@ class Decoder(nn.Module):
 		super().__init__()
 
 		self.h = img_height
-		self.odim = h*h*channel_in
-		init_dim = (h//8)**2
+		self.odim = self.h*self.h*channel_in
+		self.init_dim = (self.h//8)
 
-		self.lin = nn.Linear(zdim, init_dim * 128)
+		self.lin = nn.Linear(zdim, self.init_dim * self.init_dim * 128)
 		self.relu = nn.ReLU(True)
 		self.main = nn.Sequential(
 			nn.ConvTranspose2d(128, 128, 4, 2, 1), # h/4 x h/4
@@ -61,11 +61,12 @@ class Decoder(nn.Module):
 			nn.ReLU(True),
 
 			nn.ConvTranspose2d(32, 3, 3, 1, 1), # h x h
+			nn.Sigmoid()
 		)
 
 	def forward(self, z):
 		bs = z.shape[0]
-		z = self.relu(self.lin(z)).reshape(bs, 128, self.h, self.h)
+		z = self.relu(self.lin(z)).reshape(bs, 128, self.init_dim, self.init_dim)
 		x = self.main(z)
 		return x
 
