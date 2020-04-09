@@ -13,11 +13,11 @@ for _ in range(n_resets):
 	obs = env.reset()
 
 	for _ in range(traj):
-		env.render()
 		ac = env.action_space.sample()
 		obs, reward, done, info = env.step(ac)
 		label = {'reward': reward, 'done': done, 'info': info}
 		all_data.append((obs.transpose(2,0,1), label))
+		# env.render()
 		if done:
 			break
 
