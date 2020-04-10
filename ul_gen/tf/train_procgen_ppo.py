@@ -122,9 +122,9 @@ def main():
     params = {
         "env" : 'coinrun',
         "seed" : None,
-        "num_proc": 8,
+        "num_proc": 16,
         "normalize" : True,
-        "timesteps": 100000,
+        "timesteps": 2000000,
         "log_interval": 20,
         "eval_freq" : 10000,
         "alg_args" : {
@@ -140,7 +140,7 @@ def main():
         "policy" : "impala",
         "policy_args" : {
             "depths" : [16,32,32],
-            "scale": False
+            "scale": True
         },
         "env_args" : {
             "num_levels" : 500,
@@ -158,8 +158,8 @@ def main():
     # Create MultiProcessing Env
     env = SubprocVecEnv([make_env(params["env"], save_path, i, seed=params['seed'], **params['env_args']) for i in range(params['num_proc'])])
     if params['normalize']:
-        env = VecNormalize(env)
-
+        env = VecNormalize(env, norm_obs=False)
+    
     # Determine the policy
     policy = {
         "cnn" : CnnPolicy,
