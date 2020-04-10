@@ -4,6 +4,8 @@ import torch.nn.functional as F
 import numpy as np
 from torch.autograd import Variable
 
+from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
+
 
 class ResBlock(nn.Module):
 
@@ -25,7 +27,7 @@ class Impala_CNN(nn.Module):
 	def conv_sequence(self, in_filters, out_filters):
 		return nn.Sequential(
 			nn.Conv2d(in_filters, out_filters, 3, padding=1),
-			nn.MaxPool2d(3, stride=2), # Not sure what the padding should be
+			nn.MaxPool2d(3, stride=2, padding=1), # Not sure what the padding should be
 			ResBlock(out_filters),
 			ResBlock(out_filters)
 		)
@@ -36,15 +38,15 @@ class Impala_CNN(nn.Module):
 		self.layers = []
 		last_filter = in_filters
 		for f in self.filters:
-			self.layers.append(conv_sequence(last_filter, f))
+			self.layers.append(self.conv_sequence(last_filter, f))
 			last_filter = f
 		self.layers = nn.Sequential(*self.layers)
-		self.linear = nn.Linear(filters[-1]*32*32, cnn_output)
+		self.linear = nn.Linear(filters[-1]*8*8, cnn_output)
 
 	def forward(self, x):
 		out = self.layers(x)
-		out = F.ReLU(out)
-		flat = out.flatten()
+		out = F.relu(out)
+		out = out.view(len(out), -1) # Flatten for linear
 		out = self.linear(out) # Add ReLU after?
 		return out
 
@@ -74,8 +76,14 @@ class ProcgenPPOModel(nn.Module):
 		self.value = nn.Sequential(*value)
 
 	def forward(self, observation, prev_action, prev_reward):
-		features = self.cnn(observation)
-		return self.policy(features), self.value(features)
+		lead_dim, T, B, img_shape = infer_leading_dims(observation, 3)
+		obs = observation.view(T*B, *img_shape)
+		obs = obs.permute(0, 3, 1, 2).float() / 255.
+		features = self.cnn(obs)
+		policy = self.policy(features)
+		value = self.value(features)
+		policy, value = restore_leading_dims((policy, value), lead_dim, T, B)
+		return policy, value.squeeze(-1)
 
 class Encoder(nn.Module):
 	def __init__(self,zdim,channel_in,img_height):

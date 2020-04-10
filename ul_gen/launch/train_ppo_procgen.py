@@ -26,6 +26,7 @@ def build_and_train(slot_affinity_code, log_dir, run_ID, config_key):
         EnvCls=gym.make,
         env_kwargs=config["env"],
         CollectorCls=GpuWaitResetCollector,
+        eval_env_kwargs=config["env"],
         **config["sampler"]
     )
     algo = PPO(optim_kwargs=config["optim"], **config["algo"])
