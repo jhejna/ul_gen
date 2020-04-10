@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 import json
 import gym
+import numpy as np
 import tensorflow as tf
 from stable_baselines import logger
 from stable_baselines.bench import Monitor
@@ -85,7 +86,7 @@ class TrainCallback(BaseCallback):
     Saves model on best 100 ep reward
     """
     def __init__(self, check_freq: int, log_dir: str, verbose=1):
-        super(TrainCallBack, self).__init__(verbose)
+        super(TrainCallback, self).__init__(verbose)
         self.check_freq = check_freq
         self.log_dir = log_dir
         self.save_path = os.path.join(log_dir, 'best_model')
@@ -121,11 +122,11 @@ def main():
     params = {
         "env" : 'coinrun',
         "seed" : None,
-        "num_proc": 8,
+        "num_proc": 16,
         "normalize" : True,
-        "timesteps": 100000,
+        "timesteps": 2000000,
         "log_interval": 20,
-        "eval_freq" : 100000,
+        "eval_freq" : 10000,
         "alg_args" : {
             "learning_rate" : 5e-4,
             "gamma" : 0.999,
@@ -134,18 +135,18 @@ def main():
             "nminibatches": 8,
             "noptepochs": 3,
             "cliprange": 0.2,
-            "cliprange_vf": 0.2,   
+            "cliprange_vf": 0.2,
         },
-        "policy" : "impala"
+        "policy" : "impala",
         "policy_args" : {
             "depths" : [16,32,32],
-            "scale": False
+            "scale": True
         },
         "env_args" : {
             "num_levels" : 500,
             "start_level": 0,
             "distribution_mode" : "easy"
-        }
+        },
     }
     # Get the save path
     save_path = os.path.join(DATA_DIR, datetime.now().strftime("%m_%d_%y-%H:%M:%S"))
@@ -157,11 +158,11 @@ def main():
     # Create MultiProcessing Env
     env = SubprocVecEnv([make_env(params["env"], save_path, i, seed=params['seed'], **params['env_args']) for i in range(params['num_proc'])])
     if params['normalize']:
-        env = VecNormalize(env)
-
+        env = VecNormalize(env, norm_obs=False)
+    
     # Determine the policy
     policy = {
-        "cnn" : CnnPolicy
+        "cnn" : CnnPolicy,
         "impala" : ImpalaPolicy
     }[params['policy']]
 
