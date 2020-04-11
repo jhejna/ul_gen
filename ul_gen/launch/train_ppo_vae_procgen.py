@@ -6,7 +6,7 @@ from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
 from rlpyt.samplers.parallel.gpu.collectors import GpuWaitResetCollector
 from rlpyt.envs import gym
 from procgen import ProcgenEnv
-from rlpyt.runners.minibatch_rl import MinibatchRl
+from rlpyt.runners.minibatch_rl import MinibatchRlEval
 from rlpyt.utils.logging.context import logger_context
 from rlpyt.utils.launching.variant import load_variant, update_config
 
@@ -33,7 +33,7 @@ def build_and_train(slot_affinity_code, log_dir, run_ID, config_key):
     
     algo = PPO_VAE(optim_kwargs=config["optim"], **config["algo"])
     agent = CategoricalPgVaeAgent(ModelCls=VaePolicy, model_kwargs=config["model"], **config["agent"])
-    runner = MinibatchRl(
+    runner = MinibatchRlEval(
         algo=algo,
         agent=agent,
         sampler=sampler,
@@ -41,7 +41,7 @@ def build_and_train(slot_affinity_code, log_dir, run_ID, config_key):
         **config["runner"]
     )
     name = config["env"]["id"]
-    with logger_context(log_dir, run_ID, name, config):
+    with logger_context(log_dir, run_ID, name, config, snapshot_mode='last'):
         runner.train()
 
 

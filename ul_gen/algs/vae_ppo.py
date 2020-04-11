@@ -71,8 +71,7 @@ class PPO_VAE(PolicyGradientAlgo):
             prev_action=samples.agent.prev_action,
             prev_reward=samples.env.prev_reward,
         )
-        # For debugging, print the sahpes of everything:
-        print("VALUE SHAPE", samples.agent.agent_info.value.shape)
+        # print("VALUE SHAPE", samples.agent.agent_info.value.shape)
 
         agent_inputs = buffer_to(agent_inputs, device=self.agent.device)
         if hasattr(self.agent, "update_obs_rms"):
@@ -86,7 +85,7 @@ class PPO_VAE(PolicyGradientAlgo):
             valid=valid,
             old_dist_info=samples.agent.agent_info.dist_info,
             latent=samples.agent.agent_info.latent,
-            reconstruction=samples.agent_info.reconstruction
+            reconstruction=samples.agent.agent_info.reconstruction
         )
         if recurrent:
             # Leave in [B,N,H] for slicing to minibatches.
@@ -137,7 +136,7 @@ class PPO_VAE(PolicyGradientAlgo):
             init_rnn_state = buffer_method(init_rnn_state, "contiguous")
             dist_info, value, _rnn_state = self.agent(*agent_inputs, init_rnn_state)
         else:
-            dist_info, value = self.agent(*agent_inputs)
+            dist_info, value, latent, reconstruction = self.agent(*agent_inputs)
         dist = self.agent.distribution
 
         ratio = dist.likelihood_ratio(action, old_dist_info=old_dist_info,
@@ -159,8 +158,9 @@ class PPO_VAE(PolicyGradientAlgo):
         mu, logsd = torch.chunk(latent, 2, dim=1)
         logvar = 2*logsd
         kl_loss = valid_mean(-0.5*(1 + logvar - mu.pow(2) - logvar.exp()))
-        print("observation shape", agent_inputs.observation.shape)
-        print("Reconstruction shape", reconstruction.shape)
+        # print("observation shape", agent_inputs.observation.shape)
+        # print("Reconstruction shape", reconstruction.shape)
+        obs = buffer_to((agent_inputs.observation), "cpu")
         obs = obs.permute(0, 3, 1, 2).float() / 255.
         recon_loss = valid_mean( (obs - reconstruction).pow(2) )
         vae_loss = recon_loss + self.beta * kl_loss

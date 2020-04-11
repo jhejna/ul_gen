@@ -5,6 +5,7 @@ import numpy as np
 from torch.autograd import Variable
 
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
+from rlpyt.utils.buffer import buffer_to
 
 class Encoder(nn.Module):
     def __init__(self,zdim,channel_in,img_height):
@@ -39,7 +40,7 @@ class Encoder(nn.Module):
         mu = self.mu(x)
         logsd = self.logsd(x)
         if self.use_cuda: 
-            eps = Variable(torch.randn([bs, self.zdim]).cuda())
+            eps = buffer_to(Variable(torch.randn([bs, self.zdim])), x.device)
         else:
             eps = Variable(torch.randn([bs, self.zdim]))
         z = eps * logsd.exp() + mu
@@ -65,6 +66,7 @@ class Decoder(nn.Module):
             nn.ConvTranspose2d(32, 3, 3, 1, 1), # h x h
             nn.Sigmoid()
         )
+
     def forward(self, z):
         bs = z.shape[0]
         z = self.relu(self.lin(z)).reshape(bs, 128, self.init_dim, self.init_dim)
@@ -123,9 +125,9 @@ class VaePolicy(nn.Module):
         extractor_out = self.shared_extractor(extractor_in)
         act_dist = self.policy(extractor_out)
         value = self.value(extractor_out)
-        print("BEFORE SHAPES", act_dist.shape, value.shape)
+        # print("BEFORE SHAPES", act_dist.shape, value.shape)
         latent = torch.cat((mu, logsd), dim=1)
         act_dist, value, latent, reconstruction = restore_leading_dims((act_dist, value, latent, reconstruction), lead_dim, T, B)
-        print("AFTER SHAPES", act_dist.shape, value.shape)
-        return act_dist, value, latent, reconstruction
+        # print("AFTER SHAPES", act_dist.shape, value.shape)
+        return act_dist, value.squeeze(-1), latent, reconstruction
 

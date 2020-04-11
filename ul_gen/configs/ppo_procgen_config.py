@@ -15,7 +15,7 @@ config = dict(
         minibatches=8,
         epochs=3,
         ratio_clip=.2,
-        normalize_advantage=True
+        normalize_advantage=True,
     ),
     env={
         "id": "procgen:procgen-coinrun-v0",

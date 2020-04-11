@@ -54,7 +54,7 @@ class Impala_CNN(nn.Module):
 class ProcgenPPOModel(nn.Module):
 
 	def __init__(self, cnn_extractor=Impala_CNN, cnn_filters=[32, 64, 64], cnn_output=256, \
-				policy_layers=[64, 64, 15], value_layers=[64, 64, 1],):
+				policy_layers=[15], value_layers=[1],):
 		super().__init__()
 		self.cnn = cnn_extractor(3, cnn_filters, cnn_output)
 		policy = []
