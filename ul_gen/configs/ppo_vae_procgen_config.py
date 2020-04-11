@@ -16,6 +16,8 @@ config = dict(
         epochs=3,
         ratio_clip=.2,
         normalize_advantage=True,
+        beta=0.9,
+        vae_loss_coef=1.0,
     ),
     env={
         "id": "procgen:procgen-coinrun-v0",
@@ -24,10 +26,13 @@ config = dict(
         "distribution_mode": "easy"
     },
     model=dict(
-        cnn_filters=[16, 32, 32],
-        cnn_output=256,
-        policy_layers=[15],
-        value_layers=[1]
+        zdim=256,
+        detach_vae=False,
+        deterministic=False,
+        img_height=64,
+        shared_layers=[128,], 
+        policy_layers=[15,],
+        value_layers=[1,]
     ),
     optim=dict(),
     runner=dict(
@@ -35,8 +40,8 @@ config = dict(
         log_interval_steps=1e5,
     ),
     sampler=dict(
-        batch_T=256,
-        batch_B=16,
+        batch_T=64,
+        batch_B=1,
         eval_n_envs=10,
         eval_max_steps=20000,
         eval_max_trajectories=100,
