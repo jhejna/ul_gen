@@ -52,28 +52,28 @@ configure('%s/var_log' % args.savepath, flush_secs=5)
 npy_data = np.load(args.datapath,allow_pickle=True)[:,0]/255
 data_loader = data.DataLoader(npy_data,batch_size=args.bs, shuffle=True)
 n_batch = len(data_loader)
-
+print("Num. batches: ",n_batch)
 if args.n_epochs_full_vae > 0:
 	
 	vae_opt = optim.Adam(vae.parameters(),lr=args.lr_vae)
 	
 	for epoch in range(args.n_epochs_full_vae):
-		for it,x in enumerate(data_loader):
+		for it,dta in enumerate(data_loader):
+			if dta.shape[0] == args.bs:
+				x = dta.float().cuda()
+				vae_opt.zero_grad()
+				loss, recon_loss, kld = vae.loss(x)
+				loss.backward()
+				vae_opt.step()
 
-			x = x.float().cuda()
-			vae_opt.zero_grad()
-			loss, recon_loss, kld = vae.loss(x)
-			loss.backward()
-			vae_opt.step()
-
-			if it % (n_batch//5) == 0:
-				log_value('vae_loss', loss, it + n_batch * epoch)
-				log_value('kl_loss', kld, it + n_batch * epoch)
-				log_value('kl_loss', kld, it + n_batch * epoch)
-				print("Train Loss: %.3f   Recon: %.3f   KLD: %.3f"%(loss.item(), recon_loss.item(), kld.item()))
-
-		torch.save(vae.state_dict(), '%s/vae-%d' % (args.savepath, (epoch // 5)*5))
-		log_images_vae(x[:20],vae,args.savepath,epoch)
+				if it % (n_batch//5) == 0:
+					log_value('vae_loss', loss, it + n_batch * epoch)
+					log_value('kl_loss', kld, it + n_batch * epoch)
+					log_value('kl_loss', kld, it + n_batch * epoch)
+		if epoch % 5 == 0:	
+			print("Train Loss: %.3f   Recon: %.3f   KLD: %.3f"%(loss.item(), recon_loss.item(), kld.item()))
+			torch.save(vae.state_dict(), '%s/vae-%d' % (args.savepath, epoch))
+			log_images_vae(x[:20], vae, args.savepath, epoch)
 
 
 

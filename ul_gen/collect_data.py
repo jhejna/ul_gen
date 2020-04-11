@@ -3,7 +3,7 @@ import gym
 import numpy as np
 
 # env = ProcgenEnv(num_envs=1, env_name="coinrun")
-save_path = '/home/karam/Downloads/procgen.npy'
+save_path = '/home/karam/Downloads/procgen2.npy'
 n_resets = 200
 traj = 1000
 all_data = []
