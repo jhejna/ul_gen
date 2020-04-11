@@ -101,7 +101,7 @@ class VaePolicy(nn.Module):
             policy.append(nn.ReLU())
             last_layer = l
         policy.pop()
-        policy.append(nn.Softmax(dim=1))
+        policy.append(nn.Softmax(dim=-1))
         value = []
         last_layer = extractor_out
         for l in value_layers:
@@ -117,6 +117,7 @@ class VaePolicy(nn.Module):
         lead_dim, T, B, img_shape = infer_leading_dims(observation, 3)
         obs = observation.view(T*B, *img_shape)
         obs = obs.permute(0, 3, 1, 2).float() / 255.
+
         z, mu, logsd = self.encoder(obs)
         extractor_in = mu if self.deterministic else z
         reconstruction = self.decoder(extractor_in)
@@ -124,10 +125,14 @@ class VaePolicy(nn.Module):
             extractor_in = extractor_in.detach()
         extractor_out = self.shared_extractor(extractor_in)
         act_dist = self.policy(extractor_out)
-        value = self.value(extractor_out)
+        value = self.value(extractor_out).squeeze(-1)
         # print("BEFORE SHAPES", act_dist.shape, value.shape)
         latent = torch.cat((mu, logsd), dim=1)
         act_dist, value, latent, reconstruction = restore_leading_dims((act_dist, value, latent, reconstruction), lead_dim, T, B)
         # print("AFTER SHAPES", act_dist.shape, value.shape)
-        return act_dist, value.squeeze(-1), latent, reconstruction
+        # print(act_dist.detach().cpu())
+        return act_dist, value, latent, reconstruction
 
+'''
+TEST POLICY
+'''

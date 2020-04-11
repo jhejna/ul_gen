@@ -1,7 +1,6 @@
 import torch
 
-from rlpyt.agents.base import (AgentStep, BaseAgent, RecurrentAgentMixin,
-    AlternatingRecurrentAgentMixin)
+from rlpyt.agents.base import AgentStep, BaseAgent
 from rlpyt.distributions.categorical import Categorical, DistInfo
 from rlpyt.utils.buffer import buffer_to, buffer_func, buffer_method
 from rlpyt.utils.collections import namedarraytuple
@@ -47,7 +46,7 @@ class CategoricalPgVaeAgent(BaseAgent):
         prev_action = self.distribution.to_onehot(prev_action)
         model_inputs = buffer_to((observation, prev_action, prev_reward),
             device=self.device)
-        _pi, value, latent, reconstruction = self.model(*model_inputs)
+        _pi, value, _latent, _reconstruction = self.model(*model_inputs)
         return value.to("cpu")
 
     @torch.no_grad()
@@ -55,7 +54,7 @@ class CategoricalPgVaeAgent(BaseAgent):
         prev_action = self.distribution.to_onehot(prev_action)
         model_inputs = buffer_to((observation, prev_action, prev_reward),
             device=self.device)
-        _pi, value, latent, reconstruction = self.model(*model_inputs)
+        _pi, _value, _latent, reconstruction = self.model(*model_inputs)
         return reconstruction.to("cpu")
 
     @torch.no_grad()
@@ -63,5 +62,5 @@ class CategoricalPgVaeAgent(BaseAgent):
         prev_action = self.distribution.to_onehot(prev_action)
         model_inputs = buffer_to((observation, prev_action, prev_reward),
             device=self.device)
-        _pi, value, latent, reconstruction = self.model(*model_inputs)
+        _pi, _value, latent, _reconstruction = self.model(*model_inputs)
         return latent.to("cpu")

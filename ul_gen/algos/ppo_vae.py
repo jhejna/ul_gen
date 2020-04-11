@@ -10,7 +10,7 @@ from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.misc import iterate_mb_idxs
 
 LossInputs = namedarraytuple("LossInputs",
-    ["agent_inputs", "action", "return_", "advantage", "valid", "old_dist_info", "latent", "reconstruction"])
+    ["agent_inputs", "action", "return_", "advantage", "valid", "old_dist_info"])
 
 
 class PPO_VAE(PolicyGradientAlgo):
@@ -37,8 +37,8 @@ class PPO_VAE(PolicyGradientAlgo):
             ratio_clip=0.1,
             linear_lr_schedule=True,
             normalize_advantage=False,
-            beta=0.9,
-            vae_loss_coef=1.0
+            vae_beta=0.9,
+            vae_loss_coeff=0.1,
             ):
         """Saves input settings."""
         if optim_kwargs is None:
@@ -65,14 +65,16 @@ class PPO_VAE(PolicyGradientAlgo):
         moves them to device (e.g. GPU) up front, so that minibatches are
         formed within device, without further data transfer.
         """
+        if hasattr(self, "beta"):
+            print("############################################")
+            print("#                 HAS BETA ATTRIBUTE       #")
+            print("############################################")
         recurrent = self.agent.recurrent
         agent_inputs = AgentInputs(  # Move inputs to device once, index there.
             observation=samples.env.observation,
             prev_action=samples.agent.prev_action,
             prev_reward=samples.env.prev_reward,
         )
-        # print("VALUE SHAPE", samples.agent.agent_info.value.shape)
-
         agent_inputs = buffer_to(agent_inputs, device=self.agent.device)
         if hasattr(self.agent, "update_obs_rms"):
             self.agent.update_obs_rms(agent_inputs.observation)
@@ -84,8 +86,6 @@ class PPO_VAE(PolicyGradientAlgo):
             advantage=advantage,
             valid=valid,
             old_dist_info=samples.agent.agent_info.dist_info,
-            latent=samples.agent.agent_info.latent,
-            reconstruction=samples.agent.agent_info.reconstruction
         )
         if recurrent:
             # Leave in [B,N,H] for slicing to minibatches.
@@ -120,7 +120,7 @@ class PPO_VAE(PolicyGradientAlgo):
 
         return opt_info
 
-    def loss(self, agent_inputs, action, return_, advantage, valid, old_dist_info, latent, reconstruction,
+    def loss(self, agent_inputs, action, return_, advantage, valid, old_dist_info,
             init_rnn_state=None):
         """
         Compute the training loss: policy_loss + value_loss + entropy_loss
@@ -155,17 +155,16 @@ class PPO_VAE(PolicyGradientAlgo):
         entropy_loss = - self.entropy_loss_coeff * entropy
 
         # Add VAE Losses:
+        obs = buffer_to((agent_inputs.observation), "cpu")
+        obs = obs.permute(0, 3, 1, 2).float() / 255.
+
         mu, logsd = torch.chunk(latent, 2, dim=1)
         logvar = 2*logsd
         kl_loss = valid_mean(-0.5*(1 + logvar - mu.pow(2) - logvar.exp()))
-        # print("observation shape", agent_inputs.observation.shape)
-        # print("Reconstruction shape", reconstruction.shape)
-        obs = buffer_to((agent_inputs.observation), "cpu")
-        obs = obs.permute(0, 3, 1, 2).float() / 255.
         recon_loss = valid_mean( (obs - reconstruction).pow(2) )
-        vae_loss = recon_loss + self.beta * kl_loss
+        vae_loss = recon_loss + self.vae_beta * kl_loss
 
-        loss = pi_loss + value_loss + entropy_loss + self.vae_loss_coef * vae_loss
+        loss = pi_loss + value_loss + entropy_loss + self.vae_loss_coeff
 
         perplexity = dist.mean_perplexity(dist_info, valid)
         return loss, entropy, perplexity

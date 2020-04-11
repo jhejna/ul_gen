@@ -13,7 +13,7 @@ from rlpyt.utils.logging.context import logger_context
 from rlpyt.utils.launching.variant import load_variant, update_config
 
 from ul_gen.configs.ppo_procgen_config import configs
-from ul_gen.models.impala import ProcgenPPOModel
+from ul_gen.models.impala import ProcgenPPOTestModel
 
 
 def build_and_train(slot_affinity_code, log_dir, run_ID, config_key):
@@ -30,7 +30,7 @@ def build_and_train(slot_affinity_code, log_dir, run_ID, config_key):
         **config["sampler"]
     )
     algo = PPO(optim_kwargs=config["optim"], **config["algo"])
-    agent = CategoricalPgAgent(ModelCls=ProcgenPPOModel, model_kwargs=config["model"], **config["agent"])
+    agent = CategoricalPgAgent(ModelCls=ProcgenPPOTestModel, model_kwargs=config["model"], **config["agent"])
     runner = MinibatchRlEval(
         algo=algo,
         agent=agent,

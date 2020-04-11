@@ -37,7 +37,7 @@ config = dict(
     sampler=dict(
         batch_T=256,
         batch_B=16,
-        eval_n_envs=10,
+        eval_n_envs=8,
         eval_max_steps=20000,
         eval_max_trajectories=100,
     ),
