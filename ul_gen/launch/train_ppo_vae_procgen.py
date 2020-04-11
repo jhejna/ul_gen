@@ -12,7 +12,6 @@ from rlpyt.utils.logging.context import logger_context
 from rlpyt.utils.launching.variant import load_variant, update_config
 
 from ul_gen.configs.ppo_vae_procgen_config import configs
-from ul_gen.models.impala import ProcgenPPOTestModel
 from ul_gen.algos.ppo_vae import PPO_VAE
 from ul_gen.models.vae import VaePolicy
 from ul_gen.agents.vae_agent import CategoricalPgVaeAgent
