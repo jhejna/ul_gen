@@ -6,14 +6,15 @@ from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
 from rlpyt.samplers.parallel.gpu.collectors import GpuWaitResetCollector
 from rlpyt.envs import gym
 from procgen import ProcgenEnv
-from rlpyt.algos.pg.ppo import PPO
-from rlpyt.agents.pg.categorical import CategoricalPgAgent
 from rlpyt.runners.minibatch_rl import MinibatchRl
 from rlpyt.utils.logging.context import logger_context
 from rlpyt.utils.launching.variant import load_variant, update_config
 
-from ul_gen.configs.ppo_procgen_config import configs
-from ul_gen.models.impala import ProcgenPPOModel
+from ul_gen.models.vae import VaePolicy
+from ul_gen.agents.vae_agent import CategoricalPgVaeAgent
+from ul_gen.algs.vae_ppo import PPO_VAE
+
+from ul_gen.configs.ppo_vae_procgen_config import configs
 
 
 def build_and_train(slot_affinity_code, log_dir, run_ID, config_key):
@@ -29,8 +30,9 @@ def build_and_train(slot_affinity_code, log_dir, run_ID, config_key):
         eval_env_kwargs=config["env"],
         **config["sampler"]
     )
-    algo = PPO(optim_kwargs=config["optim"], **config["algo"])
-    agent = CategoricalPgAgent(ModelCls=ProcgenPPOModel, model_kwargs=config["model"], **config["agent"])
+    
+    algo = PPO_VAE(optim_kwargs=config["optim"], **config["algo"])
+    agent = CategoricalPgVaeAgent(ModelCls=VaePolicy, model_kwargs=config["model"], **config["agent"])
     runner = MinibatchRl(
         algo=algo,
         agent=agent,
