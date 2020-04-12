@@ -1,8 +1,8 @@
 
 configs = dict()
 
-
 config = dict(
+    checkpoint=None,
     agent=dict(),
     algo=dict(
         discount=0.999,
@@ -47,4 +47,38 @@ config = dict(
     ),
 )
 
+pretrain_config = dict(
+    env={
+        "id": "procgen:procgen-coinrun-v0",
+        "num_levels": 500,
+        "start_level": 0,
+        "distribution_mode": "easy"
+    },
+    sampler=dict(
+        batch_T=24,
+        batch_B=8,
+        eval_n_envs=0,
+        eval_max_steps=0,
+        eval_max_trajectories=0
+    ),
+    algo=dict(
+        vae_beta=0.9
+    ),
+    optim=dict(
+        lr=1e-4
+    ),
+    model=dict(
+        zdim=256,
+        img_height=64,
+        detach_vae=False,
+        deterministic=False,
+        policy_layers=[15],
+        value_layers=[1]
+    ),
+    train_steps=int(1e6),
+    log_freq=10000,
+    eval_freq=10000,
+)
+
 configs["ppo"] = config
+configs["pretrain"] = pretrain_config
