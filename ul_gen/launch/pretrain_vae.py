@@ -29,7 +29,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 affinity_code = encode_affinity(
     n_cpu_core=4,
-    n_gpu=0,
+    n_gpu=1,
     # hyperthread_offset=20,
     n_socket=2
     # cpu_per_run=2,
@@ -59,7 +59,7 @@ class RandomDiscreteModel(torch.nn.Module):
     
     def forward(self, observation, prev_action, prev_reward):
         lead_dim, T, B, img_shape = infer_leading_dims(observation, 3)
-        action =  torch.randint(low=0, high=self.num_actions, size=(T*B,)).to(device=device)
+        action =  torch.randint(low=0, high=self.num_actions, size=(T*B,))
         action = restore_leading_dims((action), lead_dim, T, B)
         return action
 

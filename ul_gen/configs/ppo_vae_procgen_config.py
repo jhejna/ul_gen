@@ -76,7 +76,7 @@ pretrain_config = dict(
         value_layers=[1]
     ),
     train_steps=int(1e6),
-    log_freq=10000,
+    log_freq=1000,
     eval_freq=10000,
 )
 
