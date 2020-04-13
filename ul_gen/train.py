@@ -1,4 +1,4 @@
-from models import VAE
+from models.vae import VaePolicy
 from utils import * 
 import torch
 import torch.optim as optim
@@ -8,8 +8,8 @@ import numpy as np
 from torch.autograd import Variable
 import argparse
 import json
-from tensorboard_logger import configure
-from tensorboard_logger import log_value
+# from tensorboard_logger import configure
+# from tensorboard_logger import log_value
 
 
 parser = argparse.ArgumentParser()
@@ -39,14 +39,14 @@ args = parser.parse_args()
 
 
 # VAE
-vae = VAE(zdim=args.zdim,beta=args.vae_beta, img_height=64).cuda()
+vae = VaePolicy(zdim=args.zdim, img_height=64).cuda()
 if args.vae_path:
 	vae.load_state_dict(torch.load(args.vae_path))
 
 
 
 # Configure tensorboard
-configure('%s/var_log' % args.savepath, flush_secs=5)
+# configure('%s/var_log' % args.savepath, flush_secs=5)
 
 # Load Data
 npy_data = np.load(args.datapath,allow_pickle=True)[:,0]/255
@@ -62,19 +62,20 @@ if args.n_epochs_full_vae > 0:
 			if dta.shape[0] == args.bs:
 				x = dta.float().cuda()
 				vae_opt.zero_grad()
-				loss, recon_loss, kld = vae.loss(x)
+				recon_loss, kld = vae.loss("l2",x)
+				loss = recon_loss + kld
 				loss.backward()
 				vae_opt.step()
 
-				if it % (n_batch//5) == 0:
-					log_value('vae_loss', loss, it + n_batch * epoch)
-					log_value('kl_loss', kld, it + n_batch * epoch)
-					log_value('kl_loss', kld, it + n_batch * epoch)
+				# if it % (n_batch//5) == 0:
+				# 	log_value('vae_loss', loss, it + n_batch * epoch)
+				# 	log_value('kl_loss', kld, it + n_batch * epoch)
+				# 	log_value('kl_loss', kld, it + n_batch * epoch)
 		
 		if epoch % 5 == 0:	
 			print("Train Loss: %.3f   Recon: %.3f   KLD: %.3f"%(loss.item(), recon_loss.item(), kld.item()))
 			torch.save(vae.state_dict(), '%s/vae-%d' % (args.savepath, epoch))
-			log_images_vae(x[:20], vae, args.savepath, epoch)
+			vae.save_images(x[:20], args.savepath, epoch)
 
 
 

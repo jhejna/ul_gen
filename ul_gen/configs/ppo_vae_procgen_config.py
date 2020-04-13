@@ -2,7 +2,7 @@
 configs = dict()
 
 config = dict(
-    checkpoint=None,
+    checkpoint='/home/karam/Downloads/ul_gen/ul_gen/vae_data/vae',
     agent=dict(),
     algo=dict(
         discount=0.999,
@@ -16,23 +16,23 @@ config = dict(
         epochs=3,
         ratio_clip=.2,
         normalize_advantage=True,
-        vae_beta=0.9,
+        vae_beta=1,
         vae_loss_coeff=0.1,
     ),
     env={
         "id": "procgen:procgen-coinrun-v0",
-        "num_levels": 500,
+        "num_levels": 700,
         "start_level": 0,
         "distribution_mode": "easy"
     },
     eval_env={
         "id": "procgen:procgen-coinrun-v0",
         "num_levels": 100,
-        "start_level": 1000,
+        "start_level": 700,
         "distribution_mode": "easy"
     },
     model=dict(
-        zdim=256,
+        zdim=100,
         img_height=64,
         detach_vae=False,
         deterministic=False,
@@ -54,11 +54,12 @@ config = dict(
 )
 
 pretrain_config = dict(
+    load_path="",
     env={
         "id": "procgen:procgen-coinrun-v0",
         "num_levels": 500,
         "start_level": 0,
-        "distribution_mode": "easy"
+        "distribution_mode": "hard"
     },
     sampler=dict(
         batch_T=24,
@@ -68,14 +69,14 @@ pretrain_config = dict(
         eval_max_trajectories=0
     ),
     algo=dict(
-        vae_beta=0.9,
-        loss = "bce"
+        vae_beta=1,
+        loss = "l2"
     ),
     optim=dict(
         lr=1e-4
     ),
     model=dict(
-        zdim=256,
+        zdim=200,
         img_height=64,
         detach_vae=False,
         deterministic=False,

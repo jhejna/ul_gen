@@ -75,6 +75,8 @@ sampler.initialize(agent=agent, affinity=affinity, seed=seed+1,rank=0)
 
 # Create the model
 model = VaePolicy(**config["model"]).to(device)
+if config["load_path"]:
+    model.load_state_dict(torch.load(config["load_path"]))
 # Setup the optimizers
 opt = optim.Adam(model.parameters(), **config["optim"])
 

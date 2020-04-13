@@ -137,12 +137,13 @@ class VaePolicy(nn.Module):
         _, _, latent, reconstruction = self.forward(*inputs)
         obs = buffer_to((inputs.observation), device)
         obs = obs.permute(0, 1, 4, 2, 3).float() / 255.
+        bs = obs.shape[0]* obs.shape[1]
         mu, logsd = torch.chunk(latent, 2, dim=1)
         logvar = 2*logsd
 
-        kl_loss = torch.mean(-0.5*(1 + logvar - mu.pow(2) - logvar.exp()))
+        kl_loss = torch.sum(-0.5*(1 + logvar - mu.pow(2) - logvar.exp())) / bs
         if loss_type == "l2":
-            recon_loss = torch.mean( (obs - reconstruction).pow(2) )
+            recon_loss = torch.sum( (obs - reconstruction).pow(2) ) / bs
         elif loss_type == "bce":
             recon_loss = nn.BCELoss()(reconstruction, obs)
         else:
