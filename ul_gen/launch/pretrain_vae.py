@@ -13,18 +13,16 @@ from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 
 from ul_gen.configs.ppo_vae_procgen_config import configs
 from ul_gen.models.vae import VaePolicy
-from torchvision.utils import save_image
 
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--savepath",type=str,default="vae_data/")
+parser.add_argument("--savepath",type=str,default="./vae_data/")
 args = parser.parse_args()
 
 os.makedirs(args.savepath, exist_ok=True)
 
 EmptyAgentInfo = namedarraytuple("EmptyAgentInfo", [])
-
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 affinity_code = encode_affinity(
@@ -35,7 +33,6 @@ affinity_code = encode_affinity(
     # cpu_per_run=2,
 )
 affinity = affinity_from_code(prepend_run_slot(0, affinity_code))
-
 # Get Params
 config = configs["pretrain"]
 
@@ -71,7 +68,6 @@ sampler = GpuSampler(
         eval_env_kwargs=config["env"],
         **config["sampler"]
     )
-
 agent = RandomAgent(ModelCls=RandomDiscreteModel, model_kwargs={"num_actions": 15})
 seed = make_seed()
 set_seed(seed)
@@ -94,17 +90,7 @@ for itr in range(config["train_steps"]):
     
     opt.zero_grad()
 
-    _, _, latent, reconstruction = model.forward(*inputs)
-    # Note that as the VAE model preprocesses the data, we need to do the same thing when calculating the loss.
-    obs = buffer_to((inputs.observation), device)
-
-    obs = obs.permute(0, 1, 4, 2, 3).float() / 255.
-    mu, logsd = torch.chunk(latent, 2, dim=1)
-    logvar = 2*logsd
-
-    # Compute Losses
-    kl_loss = torch.mean(-0.5*(1 + logvar - mu.pow(2) - logvar.exp()))
-    recon_loss = torch.mean( (obs - reconstruction).pow(2) )
+    recon_loss, kl_loss = model.loss(config["algo"]["loss"],inputs)
     loss = recon_loss + config["algo"]["vae_beta"] * kl_loss
 
     loss.backward()
@@ -114,12 +100,7 @@ for itr in range(config["train_steps"]):
         print("Iteration", itr+1, "- Reconstruction:", recon_loss.item(), "KL:", kl_loss.item()) 
     if (itr + 1) % config["eval_freq"] == 0:
         print("Iteration", itr+1, "Evaluating.")
-        model.eval()
-        zs = torch.randn(10, model.zdim).to(device)
-        reconstruction = model.decoder(zs)
-        save_image(torch.Tensor(reconstruction.detach().cpu()), os.path.join(args.savepath, 'recon_' + str(itr) +'.png'), nrow=10)
-        model.train()
-        torch.save(model.state_dict(), '%s/vae-%d' % (args.savepath, (itr+1 // 5)*5))
+        model.log_images(inputs.observation, args.savepath, itr) 
 
 torch.save(model.state_dict(), '%s/vae-final' % (args.savepath))
 print("Training complete.")

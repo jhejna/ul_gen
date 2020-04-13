@@ -2,10 +2,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+import os
 from torch.autograd import Variable
+from torchvision.utils import save_image
 
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 from rlpyt.utils.buffer import buffer_to
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class Encoder(nn.Module):
     def __init__(self,zdim,channel_in,img_height):
@@ -113,7 +116,7 @@ class VaePolicy(nn.Module):
         self.policy = nn.Sequential(*policy)
         self.value = nn.Sequential(*value)
 
-    def forward(self, observation, prev_action, prev_reward):
+    def forward(self, observation, prev_action=None, prev_reward=None):
         lead_dim, T, B, img_shape = infer_leading_dims(observation, 3)
         obs = observation.view(T*B, *img_shape)
         obs = obs.permute(0, 3, 1, 2).float() / 255.
@@ -126,12 +129,38 @@ class VaePolicy(nn.Module):
         extractor_out = self.shared_extractor(extractor_in)
         act_dist = self.policy(extractor_out)
         value = self.value(extractor_out).squeeze(-1)
-        # print("BEFORE SHAPES", act_dist.shape, value.shape)
         latent = torch.cat((mu, logsd), dim=1)
         act_dist, value, latent, reconstruction = restore_leading_dims((act_dist, value, latent, reconstruction), lead_dim, T, B)
-        # print("AFTER SHAPES", act_dist.shape, value.shape)
-        # print(act_dist.detach().cpu())
         return act_dist, value, latent, reconstruction
+
+    def loss(self, loss_type, inputs):
+        _, _, latent, reconstruction = self.forward(*inputs)
+        obs = buffer_to((inputs.observation), device)
+        obs = obs.permute(0, 1, 4, 2, 3).float() / 255.
+        mu, logsd = torch.chunk(latent, 2, dim=1)
+        logvar = 2*logsd
+
+        kl_loss = torch.mean(-0.5*(1 + logvar - mu.pow(2) - logvar.exp()))
+        if loss_type == "l2":
+            recon_loss = torch.mean( (obs - reconstruction).pow(2) )
+        elif loss_type == "bce":
+            recon_loss = nn.BCELoss()(obs, reconstruction)
+        else:
+            raise NotImplementedError
+        return recon_loss, kl_loss
+
+    def log_images(self, obs, savepath, itr,n=100):
+        self.eval()
+        zs = torch.randn(n, self.zdim).to(device)
+        samples = self.decoder(zs)
+        obs = obs.reshape(-1, 64, 64, 3)[:10]
+        _, _, latent, reconstruction = self.forward(obs)
+        obs = obs.permute(0, 3, 1, 2).float().to(device) / 255.
+        recon = torch.cat((obs, reconstruction),dim=0)
+        save_image(torch.Tensor(samples.detach().cpu()), os.path.join(savepath, 'samples_' + str(itr) +'.png'), nrow=10)
+        save_image(torch.Tensor(recon.detach().cpu()), os.path.join(savepath, 'recon_' + str(itr) +'.png'), nrow=10)
+        self.train()
+        torch.save(self.state_dict(), '%s/vae-%d' % (savepath, (itr+1 // 5)*5))
 
 '''
 TEST POLICY
