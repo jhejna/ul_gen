@@ -90,7 +90,7 @@ for itr in range(config["train_steps"]):
     
     opt.zero_grad()
 
-    recon_loss, kl_loss = model.loss(config["algo"]["loss"],inputs)
+    recon_loss, kl_loss = model.loss(config["algo"]["loss"],  inputs)
     loss = recon_loss + config["algo"]["vae_beta"] * kl_loss
 
     loss.backward()
