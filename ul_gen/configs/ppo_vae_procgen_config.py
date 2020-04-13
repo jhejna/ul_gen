@@ -1,8 +1,8 @@
 
 configs = dict()
 
-
 config = dict(
+    checkpoint=None,
     agent=dict(),
     algo=dict(
         discount=0.999,
@@ -16,8 +16,8 @@ config = dict(
         epochs=3,
         ratio_clip=.2,
         normalize_advantage=True,
-        beta=0.9,
-        vae_loss_coef=1.0,
+        vae_beta=0.9,
+        vae_loss_coeff=0.1,
     ),
     env={
         "id": "procgen:procgen-coinrun-v0",
@@ -27,12 +27,11 @@ config = dict(
     },
     model=dict(
         zdim=256,
+        img_height=64,
         detach_vae=False,
         deterministic=False,
-        img_height=64,
-        shared_layers=[128,], 
-        policy_layers=[15,],
-        value_layers=[1,]
+        policy_layers=[15],
+        value_layers=[1]
     ),
     optim=dict(),
     runner=dict(
@@ -40,12 +39,46 @@ config = dict(
         log_interval_steps=1e5,
     ),
     sampler=dict(
-        batch_T=64,
-        batch_B=1,
-        eval_n_envs=10,
+        batch_T=256,
+        batch_B=16,
+        eval_n_envs=8,
         eval_max_steps=20000,
         eval_max_trajectories=100,
     ),
 )
 
+pretrain_config = dict(
+    env={
+        "id": "procgen:procgen-coinrun-v0",
+        "num_levels": 500,
+        "start_level": 0,
+        "distribution_mode": "easy"
+    },
+    sampler=dict(
+        batch_T=24,
+        batch_B=8,
+        eval_n_envs=0,
+        eval_max_steps=0,
+        eval_max_trajectories=0
+    ),
+    algo=dict(
+        vae_beta=0.9
+    ),
+    optim=dict(
+        lr=1e-4
+    ),
+    model=dict(
+        zdim=256,
+        img_height=64,
+        detach_vae=False,
+        deterministic=False,
+        policy_layers=[15],
+        value_layers=[1]
+    ),
+    train_steps=int(1e6),
+    log_freq=1000,
+    eval_freq=10000,
+)
+
 configs["ppo"] = config
+configs["pretrain"] = pretrain_config

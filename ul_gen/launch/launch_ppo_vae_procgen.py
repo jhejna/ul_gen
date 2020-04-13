@@ -13,7 +13,7 @@ affinity_code = encode_affinity(
     # cpu_per_run=2,
 )
 
-runs_per_setting = 2
+runs_per_setting = 1
 
 variant_levels = list()
 
@@ -29,7 +29,8 @@ print("Variants", variants)
 print("Log_dirs", log_dirs)
 
 script = os.getcwd() + "/ul_gen/launch/train_ppo_vae_procgen.py"
-experiment_title = "ppo_procgen-" + datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
+script = "launch/train_ppo_vae_procgen.py"
+experiment_title = "ppo_procgen"
 default_config_key = "ppo"
 
 run_experiments(
