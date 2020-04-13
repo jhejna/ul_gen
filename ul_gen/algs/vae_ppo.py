@@ -13,6 +13,7 @@ LossInputs = namedarraytuple("LossInputs",
     ["agent_inputs", "action", "return_", "advantage", "valid", "old_dist_info", "latent", "reconstruction"])
 
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class PPO_VAE(PolicyGradientAlgo):
     """
     Proximal Policy Optimization algorithm.  Trains the agent by taking
@@ -165,8 +166,7 @@ class PPO_VAE(PolicyGradientAlgo):
         recon_loss = valid_mean( (obs - reconstruction).pow(2) )
         vae_loss = recon_loss + self.beta * kl_loss
 
-        loss = pi_loss + value_loss + entropy_loss + self.vae_loss_coef * vae_loss
-
+        loss = pi_loss + value_loss + entropy_loss #+ self.vae_loss_coef * vae_loss
         perplexity = dist.mean_perplexity(dist_info, valid)
         return loss, entropy, perplexity
 

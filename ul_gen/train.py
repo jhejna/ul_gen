@@ -70,6 +70,7 @@ if args.n_epochs_full_vae > 0:
 					log_value('vae_loss', loss, it + n_batch * epoch)
 					log_value('kl_loss', kld, it + n_batch * epoch)
 					log_value('kl_loss', kld, it + n_batch * epoch)
+		
 		if epoch % 5 == 0:	
 			print("Train Loss: %.3f   Recon: %.3f   KLD: %.3f"%(loss.item(), recon_loss.item(), kld.item()))
 			torch.save(vae.state_dict(), '%s/vae-%d' % (args.savepath, epoch))

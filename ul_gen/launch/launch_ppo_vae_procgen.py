@@ -3,12 +3,13 @@ from rlpyt.utils.launching.affinity import encode_affinity
 from rlpyt.utils.launching.exp_launcher import run_experiments
 from rlpyt.utils.launching.variant import make_variants, VariantLevel
 from datetime import datetime
+import os 
 
 affinity_code = encode_affinity(
-    n_cpu_core=16,
-    n_gpu=4,
+    n_cpu_core=1,
+    n_gpu=1,
     # hyperthread_offset=20,
-    n_socket=2
+    n_socket=1
     # cpu_per_run=2,
 )
 
@@ -27,7 +28,7 @@ variants, log_dirs = make_variants(*variant_levels)
 print("Variants", variants)
 print("Log_dirs", log_dirs)
 
-script = "launch/train_ppo_vae_procgen.py"
+script = os.getcwd() + "/ul_gen/launch/train_ppo_vae_procgen.py"
 experiment_title = "ppo_procgen-" + datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
 default_config_key = "ppo"
 

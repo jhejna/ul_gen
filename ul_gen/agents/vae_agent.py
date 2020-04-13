@@ -18,6 +18,7 @@ class CategoricalPgVaeAgent(BaseAgent):
     """
 
     def __call__(self, observation, prev_action, prev_reward):
+
         prev_action = self.distribution.to_onehot(prev_action)
         model_inputs = buffer_to((observation, prev_action, prev_reward),
             device=self.device)
@@ -36,9 +37,13 @@ class CategoricalPgVaeAgent(BaseAgent):
         model_inputs = buffer_to((observation, prev_action, prev_reward),
             device=self.device)
         pi, value, latent, reconstruction = self.model(*model_inputs)
+        # print(pi)
+        # print(latent)
+        # print()
         dist_info = DistInfo(prob=pi)
         action = self.distribution.sample(dist_info)
         agent_info = AgentInfoVae(dist_info=dist_info, value=value, latent=latent, reconstruction=reconstruction)
+
         action, agent_info = buffer_to((action, agent_info), device="cpu")
         return AgentStep(action=action, agent_info=agent_info)
 
