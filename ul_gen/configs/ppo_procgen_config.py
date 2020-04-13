@@ -23,6 +23,12 @@ config = dict(
         "start_level": 0,
         "distribution_mode": "easy"
     },
+    eval_env={
+        "id": "procgen:procgen-coinrun-v0",
+        "num_levels": 100,
+        "start_level": 1000,
+        "distribution_mode": "easy"
+    },
     model=dict(
         cnn_filters=[16, 32, 32],
         cnn_output=256,
