@@ -40,6 +40,7 @@ class PPO_VAE(PolicyGradientAlgo):
             normalize_advantage=False,
             vae_beta=0.9,
             vae_loss_coeff=0.1,
+            vae_loss_type="l2",
             ):
         """Saves input settings."""
         if optim_kwargs is None:
