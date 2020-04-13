@@ -6,7 +6,7 @@ config = dict(
     agent=dict(),
     algo=dict(
         discount=0.999,
-        learning_rate=1e-4,
+        learning_rate=8e-4,
         value_loss_coeff=0.5,
         entropy_loss_coeff=0.01,
         clip_grad_norm=1.,
@@ -25,6 +25,12 @@ config = dict(
         "start_level": 0,
         "distribution_mode": "easy"
     },
+    eval_env={
+        "id": "procgen:procgen-coinrun-v0",
+        "num_levels": 100,
+        "start_level": 1000,
+        "distribution_mode": "easy"
+    },
     model=dict(
         zdim=256,
         img_height=64,
@@ -35,7 +41,7 @@ config = dict(
     ),
     optim=dict(),
     runner=dict(
-        n_steps=1e6,
+        n_steps=5e6,
         log_interval_steps=1e5,
     ),
     sampler=dict(

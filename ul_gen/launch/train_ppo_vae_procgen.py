@@ -26,7 +26,7 @@ def build_and_train(slot_affinity_code, log_dir, run_ID, config_key):
         EnvCls=gym.make,
         env_kwargs=config["env"],
         CollectorCls=GpuResetCollector,
-        eval_env_kwargs=config["env"],
+        eval_env_kwargs=config["eval_env"],
         **config["sampler"]
     )
     if config["checkpoint"]:
@@ -35,8 +35,7 @@ def build_and_train(slot_affinity_code, log_dir, run_ID, config_key):
         model_state_dict = None
 
     algo = PPO_VAE(optim_kwargs=config["optim"], **config["algo"])
-    # agent = CategoricalPgVaeAgent(ModelCls=VaePolicy, model_kwargs=config["model"], initial_mode_state_dict=model_state_dict, **config["agent"])
-    agent = CategoricalPgVaeAgent(ModelCls=VaePolicy, model_kwargs=config["model"], **config["agent"])
+    agent = CategoricalPgVaeAgent(ModelCls=VaePolicy, model_kwargs=config["model"], initial_model_state_dict=model_state_dict, **config["agent"])
     runner = MinibatchRlEval(
         algo=algo,
         agent=agent,

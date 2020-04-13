@@ -13,7 +13,7 @@ from rlpyt.utils.logging.context import logger_context
 from rlpyt.utils.launching.variant import load_variant, update_config
 
 from ul_gen.configs.ppo_procgen_config import configs
-from ul_gen.models.impala import ProcgenPPOTestModel
+from ul_gen.models.vae import BaselinePolicy
 
 
 def build_and_train(slot_affinity_code, log_dir, run_ID, config_key):
@@ -26,11 +26,11 @@ def build_and_train(slot_affinity_code, log_dir, run_ID, config_key):
         EnvCls=gym.make,
         env_kwargs=config["env"],
         CollectorCls=GpuResetCollector,
-        eval_env_kwargs=config["env"],
+        eval_env_kwargs=config["eval_env"],
         **config["sampler"]
     )
     algo = PPO(optim_kwargs=config["optim"], **config["algo"])
-    agent = CategoricalPgAgent(ModelCls=ProcgenPPOTestModel, model_kwargs=config["model"], **config["agent"])
+    agent = CategoricalPgAgent(ModelCls=BaselinePolicy, model_kwargs=config["model"], **config["agent"])
     runner = MinibatchRlEval(
         algo=algo,
         agent=agent,
