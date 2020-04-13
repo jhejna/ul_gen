@@ -6,7 +6,7 @@ config = dict(
     agent=dict(),
     algo=dict(
         discount=0.999,
-        learning_rate=5e-4,
+        learning_rate=8e-4,
         value_loss_coeff=0.5,
         entropy_loss_coeff=0.01,
         clip_grad_norm=1.,
@@ -41,7 +41,7 @@ config = dict(
     ),
     optim=dict(),
     runner=dict(
-        n_steps=1e6,
+        n_steps=5e6,
         log_interval_steps=1e5,
     ),
     sampler=dict(

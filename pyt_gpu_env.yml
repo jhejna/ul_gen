@@ -5,6 +5,7 @@ dependencies:
 - python=3.7
 - pytorch=1.4
 - cudatoolkit=10.1
+- torchvision
 - numpy
 - psutil
 - opencv  # atari.

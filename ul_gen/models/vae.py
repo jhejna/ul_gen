@@ -75,7 +75,7 @@ class Decoder(nn.Module):
 
 class VaePolicy(nn.Module):
 
-    def __init__(self, zdim, channel_in=3, img_height=32, shared_layers=[128,], 
+    def __init__(self, zdim, channel_in=3, img_height=64, shared_layers=[128,], 
                         policy_layers=[15,], value_layers=[1,], act_fn='relu', deterministic=False,
                         detach_vae=False):
         super().__init__()
@@ -126,13 +126,74 @@ class VaePolicy(nn.Module):
         extractor_out = self.shared_extractor(extractor_in)
         act_dist = self.policy(extractor_out)
         value = self.value(extractor_out).squeeze(-1)
-        # print("BEFORE SHAPES", act_dist.shape, value.shape)
         latent = torch.cat((mu, logsd), dim=1)
         act_dist, value, latent, reconstruction = restore_leading_dims((act_dist, value, latent, reconstruction), lead_dim, T, B)
-        # print("AFTER SHAPES", act_dist.shape, value.shape)
-        # print(act_dist.detach().cpu())
         return act_dist, value, latent, reconstruction
 
-'''
-TEST POLICY
-'''
+
+class BaselinePolicy(nn.Module):
+    def __init__(self, channel_in=3, img_height=64, shared_layers=[128,], 
+                        policy_layers=[15,], value_layers=[1,], act_fn='relu',):
+
+        super().__init__()
+
+        self.h = img_height
+        final_dim = (self.h//8)**2
+        act_fn = {
+            'relu' : lambda: nn.ReLU(),
+            'tanh' : lambda: nn.Tanh()
+        }[act_fn]
+
+        self.use_cuda = torch.cuda.is_available()
+
+        self.main = nn.Sequential(
+            nn.Conv2d(channel_in, 32, 1), # h x h
+            nn.ReLU(True),
+
+            nn.Conv2d(32, 64, 3, 2, 1), # h/2 x h/2
+            nn.ReLU(True), 
+
+            nn.Conv2d(64, 128, 3, 2, 1), # h/4 x h/4
+            nn.ReLU(True),
+
+            nn.Conv2d(128, 256, 3, 2, 1), # h/8 x h/8
+            nn.ReLU(True),
+            
+            nn.Flatten(),
+            nn.Linear(final_dim * 256, 256) # finally convert to FC.
+            )
+        last_layer = 256
+        shared_extractor = [act_fn()]
+        for l in shared_layers:
+            shared_extractor.append(nn.Linear(last_layer, l))
+            shared_extractor.append(act_fn())
+            last_layer = l
+        extractor_out = last_layer
+        policy = []
+        for l in policy_layers:
+            policy.append(nn.Linear(last_layer, l))
+            policy.append(nn.ReLU())
+            last_layer = l
+        policy.pop()
+        policy.append(nn.Softmax(dim=-1))
+        value = []
+        last_layer = extractor_out
+        for l in value_layers:
+            value.append(nn.Linear(last_layer, l))
+            value.append(nn.ReLU())
+            last_layer = l
+        value.pop()
+        self.shared_extractor = nn.Sequential(*shared_extractor)
+        self.policy = nn.Sequential(*policy)
+        self.value = nn.Sequential(*value)
+    
+    def forward(self, observation, prev_action, prev_reward):
+        lead_dim, T, B, img_shape = infer_leading_dims(observation, 3)
+        obs = observation.view(T*B, *img_shape)
+        obs = obs.permute(0, 3, 1, 2).float() / 255.
+        extractor_in = self.main(obs)
+        extractor_out = self.shared_extractor(extractor_in)
+        act_dist = self.policy(extractor_out)
+        value = self.value(extractor_out).squeeze(-1)
+        act_dist, value = restore_leading_dims((act_dist, value), lead_dim, T, B)
+        return act_dist, value
