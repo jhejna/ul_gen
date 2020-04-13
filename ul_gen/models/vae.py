@@ -144,7 +144,7 @@ class VaePolicy(nn.Module):
         if loss_type == "l2":
             recon_loss = torch.mean( (obs - reconstruction).pow(2) )
         elif loss_type == "bce":
-            recon_loss = nn.BCELoss()(obs, reconstruction)
+            recon_loss = nn.BCELoss()(reconstruction, obs)
         else:
             raise NotImplementedError
         return recon_loss, kl_loss

@@ -22,7 +22,7 @@ config = dict(
     env={
         "id": "procgen:procgen-coinrun-v0",
         "num_levels": 500,
-        "start_level": 500,
+        "start_level": 0,
         "distribution_mode": "easy"
     },
     model=dict(
@@ -63,7 +63,7 @@ pretrain_config = dict(
     ),
     algo=dict(
         vae_beta=0.9,
-        loss = "l2"
+        loss = "bce"
     ),
     optim=dict(
         lr=1e-4
