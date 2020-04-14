@@ -2,7 +2,7 @@
 configs = dict()
 
 config = dict(
-    checkpoint='/home/karam/Downloads/ul_gen/ul_gen/vae_data/vae',
+    checkpoint='/home/karam/Downloads/vae',
     agent=dict(),
     algo=dict(
         discount=0.999,
@@ -21,18 +21,18 @@ config = dict(
     ),
     env={
         "id": "procgen:procgen-coinrun-v0",
-        "num_levels": 700,
+        "num_levels": 500,
         "start_level": 0,
         "distribution_mode": "easy"
     },
     eval_env={
         "id": "procgen:procgen-coinrun-v0",
         "num_levels": 100,
-        "start_level": 700,
+        "start_level": 1000,
         "distribution_mode": "easy"
     },
     model=dict(
-        zdim=100,
+        zdim=200,
         img_height=64,
         detach_vae=False,
         deterministic=False,
