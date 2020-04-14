@@ -40,6 +40,7 @@ class PPO_VAE(PolicyGradientAlgo):
             normalize_advantage=False,
             vae_beta=0.9,
             vae_loss_coeff=0.1,
+            vae_loss_type="l2",
             ):
         """Saves input settings."""
         if optim_kwargs is None:
@@ -159,13 +160,21 @@ class PPO_VAE(PolicyGradientAlgo):
         obs = buffer_to((agent_inputs.observation), "cpu")
         obs = obs.permute(0, 3, 1, 2).float() / 255.
 
+        bs = obs.shape[0]
         mu, logsd = torch.chunk(latent, 2, dim=1)
         logvar = 2*logsd
-        kl_loss = valid_mean(-0.5*(1 + logvar - mu.pow(2) - logvar.exp()))
-        recon_loss = valid_mean( (obs - reconstruction).pow(2) )
+
+        kl_loss = torch.sum(-0.5*(1 + logvar - mu.pow(2) - logvar.exp())) / bs
+        if self.vae_loss_type == "l2":
+            recon_loss = torch.sum( (obs - reconstruction).pow(2) ) / bs
+        elif self.vae_loss_type == "bce":
+            recon_loss = torch.nn.functional.binary_cross_entropy(reconstruction, obs)
+        else:
+            raise NotImplementedError
+
         vae_loss = recon_loss + self.vae_beta * kl_loss
 
-        loss = pi_loss + value_loss + entropy_loss + self.vae_loss_coeff
+        loss = pi_loss + value_loss + entropy_loss + self.vae_loss_coeff * vae_loss
 
         perplexity = dist.mean_perplexity(dist_info, valid)
         return loss, entropy, perplexity

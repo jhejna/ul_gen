@@ -18,6 +18,7 @@ config = dict(
         normalize_advantage=True,
         vae_beta=1,
         vae_loss_coeff=0.1,
+        vae_loss_type="l2",
     ),
     env={
         "id": "procgen:procgen-coinrun-v0",
