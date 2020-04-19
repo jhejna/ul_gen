@@ -171,10 +171,13 @@ class PPO_VAE(PolicyGradientAlgo):
             recon_loss = torch.nn.functional.binary_cross_entropy(reconstruction, obs)
         else:
             raise NotImplementedError
-
+        
+        
         vae_loss = recon_loss + self.vae_beta * kl_loss
 
-        loss = pi_loss + value_loss + entropy_loss + self.vae_loss_coeff * vae_loss
+        loss = pi_loss + value_loss + entropy_loss # + self.vae_loss_coeff * vae_loss
+
+        print("Loss", loss.item(), "VAE Loss", vae_loss.item())
 
         perplexity = dist.mean_perplexity(dist_info, valid)
         return loss, entropy, perplexity

@@ -163,6 +163,13 @@ class VaePolicy(nn.Module):
         self.train()
         torch.save(self.state_dict(), '%s/vae-%d' % (savepath, (itr+1 // 5)*5))
 
+    def log_samples(self, savepath, itr, n=64):
+        self.eval()
+        zs = torch.randn(n, self.zdim).to(device)
+        samples = self.decoder(zs)
+        save_image(torch.Tensor(samples.detach().cpu()), os.path.join(savepath, 'samples_' + str(itr) +'.png'), nrow=8)
+        self.train()
+
 '''
 TEST POLICY
 '''
