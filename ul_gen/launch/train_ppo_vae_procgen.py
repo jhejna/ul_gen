@@ -10,6 +10,7 @@ from rlpyt.agents.pg.categorical import CategoricalPgAgent
 from rlpyt.runners.minibatch_rl import MinibatchRlEval
 from rlpyt.utils.logging.context import logger_context
 from rlpyt.utils.launching.variant import load_variant, update_config
+from rlpyt.utils.logging import logger
 
 from ul_gen.configs.ppo_vae_procgen_config import configs
 from ul_gen.algos.ppo_vae import PPO_VAE

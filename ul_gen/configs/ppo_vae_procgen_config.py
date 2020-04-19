@@ -2,7 +2,7 @@
 configs = dict()
 
 config = dict(
-    checkpoint='/home/karam/Downloads/ul_gen/ul_gen/vae_data/vae',
+    checkpoint=None,
     agent=dict(),
     algo=dict(
         discount=0.999,
@@ -89,5 +89,5 @@ pretrain_config = dict(
     eval_freq=5000,
 )
 
-configs["ppo"] = config
+configs["ppo_vae"] = config
 configs["pretrain"] = pretrain_config
