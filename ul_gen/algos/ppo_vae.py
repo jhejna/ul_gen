@@ -177,11 +177,9 @@ class PPO_VAE(PolicyGradientAlgo):
 
         ppo_loss = pi_loss + value_loss + entropy_loss # + self.vae_loss_coeff * vae_loss
 
-        vae_loss_scaling_coef = self.vae_loss_coeff * ppo_loss.detach() / vae_loss.detach()
+        vae_loss_scaling_coef = self.vae_loss_coeff * torch.abs(ppo_loss.detach()) / vae_loss.detach()
 
         loss = ppo_loss + vae_loss_scaling_coef * vae_loss
-
-        print("Loss", loss.item(), "VAE Loss", (vae_loss_scaling_coef * vae_loss).item())
 
         perplexity = dist.mean_perplexity(dist_info, valid)
         return loss, entropy, perplexity
