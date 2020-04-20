@@ -19,21 +19,22 @@ config = dict(
         vae_beta=1,
         vae_loss_coeff=0.25,
         vae_loss_type="l2",
+        vae_norm_loss=True,
     ),
     env={
         "id": "procgen:procgen-coinrun-v0",
-        "num_levels": 700,
+        "num_levels": 500,
         "start_level": 0,
-        "distribution_mode": "easy"
+        "distribution_mode": "hard"
     },
     eval_env={
         "id": "procgen:procgen-coinrun-v0",
         "num_levels": 100,
         "start_level": 700,
-        "distribution_mode": "easy"
+        "distribution_mode": "hard"
     },
     model=dict(
-        zdim=100,
+        zdim=200,
         img_height=64,
         detach_vae=False,
         deterministic=False,
