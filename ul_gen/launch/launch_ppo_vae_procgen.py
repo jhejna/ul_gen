@@ -6,7 +6,7 @@ from datetime import datetime
 import os 
 
 affinity_code = encode_affinity(
-    n_cpu_core=1,
+    n_cpu_core=2,
     n_gpu=1,
     # hyperthread_offset=20,
     n_socket=1
