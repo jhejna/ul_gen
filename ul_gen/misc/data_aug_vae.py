@@ -116,15 +116,16 @@ class AugVAE(torch.nn.Module):
 ##### Hyper Parameters #####
 img_dim = 48
 img_channels = 1
-epochs = 1
+epochs = 30
 batch_size = 96
-lr = 1e-3
-sim_loss_coef = 0.0
+lr = 5e-4
+sim_loss_coef = 0.5
 z_dim = 36
 k_dim = 28
+beta = 1.05
 scale_range = (0.9, 0.91)
-save_freq = 1
-savepath = 'vae_aug_test'
+save_freq = 5
+savepath = 'vae_aug_test2'
 ############################
 os.makedirs(savepath, exist_ok=True)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -146,7 +147,6 @@ for epoch in range(epochs):
     for batch, _ in loader:
         optimizer.zero_grad()
         # Concatenate to feed all the data through
-        print(np.max(batch['orig'][0].detach().numpy()))
         x = torch.cat((batch['orig'], batch['aug']), dim=0).to(device)
         x_hat, mu, log_var = model(x)
         kl_loss = torch.sum(-0.5*(1 + log_var - mu.pow(2) - log_var.exp())) / len(x) # Divide by batch size
@@ -157,9 +157,10 @@ for epoch in range(epochs):
         mu_orig, mu_aug = mu_orig[:k_dim], mu_aug[:k_dim]
         log_var_orig, log_var_aug = log_var_orig[:k_dim], log_var_aug[:k_dim]
         # KL divergence between original and augmented.
-        sim_loss = torch.sum(log_var_aug - log_var_orig + 0.5*(log_var_orig.exp() + (mu_orig - mu_aug).pow(2))/log_var_aug.exp() - 0.5)/ len(x)
+        # sim_loss = torch.sum(log_var_aug - log_var_orig + 0.5*(log_var_orig.exp() + (mu_orig - mu_aug).pow(2))/log_var_aug.exp() - 0.5)/ len(x)
+        sim_loss = torch.sum(0.5*(mu_orig - mu_aug).pow(2)) / len(x)
 
-        loss = kl_loss + recon_loss # + sim_loss_coef * sim_loss
+        loss = recon_loss + beta * kl_loss  # + sim_loss_coef * sim_loss
         loss.backward()
         optimizer.step()
         
