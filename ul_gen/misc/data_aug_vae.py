@@ -33,8 +33,8 @@ class PairedAug(object):
 
     def __call__(self, sample):
         aug = sample.copy()
-        orig = to_tensor(self.aug_img(sample)) / 127.5 - 1
-        aug = to_tensor(self.aug_img(aug)) / 127.5 - 1
+        orig = 2*to_tensor(self.aug_img(sample)) - 1
+        aug = 2*to_tensor(self.aug_img(aug)) - 1
 
         return {'orig': orig, 'aug': aug}
 
@@ -122,7 +122,7 @@ lr = 1e-3
 sim_loss_coef = 0.0
 z_dim = 36
 k_dim = 28
-scale_range = (0.8, 0.8)
+scale_range = (0.9, 0.91)
 save_freq = 1
 savepath = 'vae_aug_test'
 ############################
@@ -146,6 +146,7 @@ for epoch in range(epochs):
     for batch, _ in loader:
         optimizer.zero_grad()
         # Concatenate to feed all the data through
+        print(np.max(batch['orig'][0].detach().numpy()))
         x = torch.cat((batch['orig'], batch['aug']), dim=0).to(device)
         x_hat, mu, log_var = model(x)
         kl_loss = torch.sum(-0.5*(1 + log_var - mu.pow(2) - log_var.exp())) / len(x) # Divide by batch size
@@ -159,9 +160,9 @@ for epoch in range(epochs):
         sim_loss = torch.sum(log_var_aug - log_var_orig + 0.5*(log_var_orig.exp() + (mu_orig - mu_aug).pow(2))/log_var_aug.exp() - 0.5)/ len(x)
 
         loss = kl_loss + recon_loss # + sim_loss_coef * sim_loss
-
         loss.backward()
         optimizer.step()
+        
 
     print('Epoch %d Recon Loss: %.3f KL Loss: %.3f Sim Loss: %.3f' % (epoch+1, recon_loss.item(), kl_loss.item(), sim_loss.item()))
     if (epoch + 1) % save_freq == 0:
@@ -173,8 +174,9 @@ for epoch in range(epochs):
         recon = (recon + 1)/2
         samples = (samples + 1)/2
 
-
         save_image(recon.detach().cpu(), os.path.join(savepath, 'recon_' + str(epoch+1) +'.png'), nrow=8)
         save_image(samples.detach().cpu(), os.path.join(savepath, 'samples_' + str(epoch+1) +'.png'), nrow=8)
+        torch.save(model.state_dict(), '%s/aug-vae-%d' % (savepath, epoch+1))
         model.train()
+
 
