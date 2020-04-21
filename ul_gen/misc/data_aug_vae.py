@@ -116,7 +116,7 @@ class AugVAE(torch.nn.Module):
 ##### Hyper Parameters #####
 img_dim = 48
 img_channels = 1
-epochs = 30
+epochs = 1
 batch_size = 96
 lr = 5e-4
 sim_loss_coef = 0.5
@@ -124,7 +124,7 @@ z_dim = 36
 k_dim = 28
 beta = 1.05
 scale_range = (0.9, 0.91)
-save_freq = 5
+save_freq = 1
 savepath = 'vae_aug_test2'
 ############################
 os.makedirs(savepath, exist_ok=True)
@@ -154,29 +154,53 @@ for epoch in range(epochs):
         # Compute the similarity loss
         mu_orig, mu_aug = torch.chunk(mu, 2, dim=0)
         log_var_orig, log_var_aug = torch.chunk(log_var, 2, dim=0)
-        mu_orig, mu_aug = mu_orig[:k_dim], mu_aug[:k_dim]
-        log_var_orig, log_var_aug = log_var_orig[:k_dim], log_var_aug[:k_dim]
+        mu_orig, mu_aug = mu_orig[:, :k_dim], mu_aug[:, :k_dim]
+        log_var_orig, log_var_aug = log_var_orig[:, :k_dim], log_var_aug[:, :k_dim]
         # KL divergence between original and augmented.
-        # sim_loss = torch.sum(log_var_aug - log_var_orig + 0.5*(log_var_orig.exp() + (mu_orig - mu_aug).pow(2))/log_var_aug.exp() - 0.5)/ len(x)
-        sim_loss = torch.sum(0.5*(mu_orig - mu_aug).pow(2)) / len(x)
+        sim_loss = torch.sum(log_var_aug - log_var_orig + 0.5*(log_var_orig.exp() + (mu_orig - mu_aug).pow(2))/log_var_aug.exp() - 0.5)/ len(x)
+        # sim_loss = torch.sum(0.5*(mu_orig - mu_aug).pow(2)) / len(x)
 
-        loss = recon_loss + beta * kl_loss  # + sim_loss_coef * sim_loss
+        loss = recon_loss + beta * kl_loss + sim_loss_coef * sim_loss
         loss.backward()
         optimizer.step()
-        
 
+    
     print('Epoch %d Recon Loss: %.3f KL Loss: %.3f Sim Loss: %.3f' % (epoch+1, recon_loss.item(), kl_loss.item(), sim_loss.item()))
     if (epoch + 1) % save_freq == 0:
         # Save reconstructions and samples:
         model.eval()
-        recon = torch.cat((x[:8], x_hat[:8]),dim=0)        
+        recon = torch.cat((x[:8], x_hat[:8]),dim=0) 
+        recon = (recon + 1)/2
+        save_image(recon.detach().cpu(), os.path.join(savepath, 'recon_' + str(epoch+1) +'.png'), nrow=8)
+
         zs = torch.randn(16, z_dim).to(device)
         samples = model.decoder(zs)
-        recon = (recon + 1)/2
         samples = (samples + 1)/2
-
-        save_image(recon.detach().cpu(), os.path.join(savepath, 'recon_' + str(epoch+1) +'.png'), nrow=8)
         save_image(samples.detach().cpu(), os.path.join(savepath, 'samples_' + str(epoch+1) +'.png'), nrow=8)
+
+        # Now, save the interpolations.
+        n_interp = 8
+        x_orig, x_aug = torch.chunk(x, 2, dim=0)
+        x_orig, x_aug  = x_orig[:n_interp], x_aug[:n_interp]
+        z_orig, _ = model.encoder(x_orig)
+        z_aug, _ = model.encoder(x_aug)
+        diff_vec = z_aug - z_orig
+        # Set the first k components of diff vec to be zero, so we only vary along aug components
+        diff_vec[:, :k_dim] = 0
+
+        interpolations = []
+        interpolations.append(x_orig)
+        for i in range(1, 9):
+            interpolations.append(model.decoder(z_orig + 0.111111*i*diff_vec))
+        interpolations.append(x_aug)
+        out_interp = torch.zeros(n_interp*10, img_channels, img_dim, img_dim)
+        for i in range(10):
+            for j in range(n_interp):
+                out_interp[10*j + i, :, :, :] = interpolations[i][j, :, :, :]
+
+        interpolations = (out_interp + 1)/2
+        save_image(interpolations.detach().cpu(), os.path.join(savepath, 'interp_' + str(epoch+1) +'.png'), nrow=10)
+            
         torch.save(model.state_dict(), '%s/aug-vae-%d' % (savepath, epoch+1))
         model.train()
 
