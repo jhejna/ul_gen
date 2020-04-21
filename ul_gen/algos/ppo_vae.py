@@ -177,7 +177,7 @@ class PPO_VAE(PolicyGradientAlgo):
         vae_loss = recon_loss + self.vae_beta * kl_loss
 
         ppo_loss = pi_loss + value_loss + entropy_loss # + self.vae_loss_coeff * vae_loss
-
+        
         if self.vae_norm_loss:
             vae_loss = vae_loss * torch.abs(ppo_loss.detach()) / vae_loss.detach()
 
