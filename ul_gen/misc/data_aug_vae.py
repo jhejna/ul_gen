@@ -1,3 +1,4 @@
+import os
 import torch
 import torchvision
 import numpy as np
@@ -58,14 +59,15 @@ class PrintNode(torch.nn.Module):
 
 class AugVAE(torch.nn.Module):
 
-  def __init__(self, img_dim=64, z_dim=32):
+  def __init__(self, img_dim=64, img_channels=3, z_dim=32):
     super(AugVAE, self).__init__()
     self.img_dim = img_dim
     self.z_dim = z_dim
     self.k_dim = k_dim
+    self.img_channels = img_channels
 
     final_feature_dim = img_dim // 8
-    self.encoder_net = torch.nn.Sequential(torch.nn.Conv2d(1, 32, 3, 1 ,1),
+    self.encoder_net = torch.nn.Sequential(torch.nn.Conv2d(self.img_channels, 32, 3, 1 ,1),
                                            torch.nn.ReLU(),
                                            torch.nn.Conv2d(32, 64, 3, 2, 1),
                                            torch.nn.ReLU(),
@@ -84,7 +86,7 @@ class AugVAE(torch.nn.Module):
                                            torch.nn.ReLU(),
                                            torch.nn.ConvTranspose2d(64, 32, 4, 2, 1),
                                            torch.nn.ReLU(),
-                                           torch.nn.Conv2d(32, 3, 3, 1, 1),
+                                           torch.nn.Conv2d(32, self.img_channels, 3, 1, 1),
                                            torch.nn.Tanh())
 
   def encoder(self, x):
@@ -113,17 +115,18 @@ class AugVAE(torch.nn.Module):
 
 ##### Hyper Parameters #####
 img_dim = 48
-epochs = 10
-batch_size = 128
+img_channels = 1
+epochs = 1
+batch_size = 96
 lr = 1e-3
-sim_loss_coef = 0.5
+sim_loss_coef = 0.0
 z_dim = 36
 k_dim = 28
 scale_range = (0.8, 0.8)
-save_freq = 10
+save_freq = 1
 savepath = 'vae_aug_test'
 ############################
-
+os.makedirs(savepath, exist_ok=True)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 mnist_data = torchvision.datasets.MNIST('~/.pytorch/mnist', train=True, download=True, transform=PairedAug(img_dim, resize=scale_range))
@@ -136,7 +139,7 @@ loader = torch.utils.data.DataLoader(mnist_data, batch_size=batch_size, shuffle=
 # plt.imshow(sample['aug'][0][0])
 # plt.show()
 
-model = AugVAE(img_dim=img_dim, z_dim=z_dim).to(device)
+model = AugVAE(img_dim=img_dim, img_channels=img_channels, z_dim=z_dim).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 for epoch in range(epochs):
@@ -145,7 +148,7 @@ for epoch in range(epochs):
         # Concatenate to feed all the data through
         x = torch.cat((batch['orig'], batch['aug']), dim=0).to(device)
         x_hat, mu, log_var = model(x)
-        kl_loss = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp()) / len(x) # Divide by batch size
+        kl_loss = torch.sum(-0.5*(1 + log_var - mu.pow(2) - log_var.exp())) / len(x) # Divide by batch size
         recon_loss = torch.sum((x - x_hat).pow(2)) / len(x)
         # Compute the similarity loss
         mu_orig, mu_aug = torch.chunk(mu, 2, dim=0)
@@ -155,7 +158,7 @@ for epoch in range(epochs):
         # KL divergence between original and augmented.
         sim_loss = torch.sum(log_var_aug - log_var_orig + 0.5*(log_var_orig.exp() + (mu_orig - mu_aug).pow(2))/log_var_aug.exp() - 0.5)/ len(x)
 
-        loss = kl_loss + recon_loss + sim_loss_coef * sim_loss
+        loss = kl_loss + recon_loss # + sim_loss_coef * sim_loss
 
         loss.backward()
         optimizer.step()
@@ -165,9 +168,13 @@ for epoch in range(epochs):
         # Save reconstructions and samples:
         model.eval()
         recon = torch.cat((x[:8], x_hat[:8]),dim=0)        
-        zs = torch.randn(16, self.zdim).to(device)
+        zs = torch.randn(16, z_dim).to(device)
         samples = model.decoder(zs)
-        save_image(recon.detach().cpu(), os.path.join(savepath, 'recon_' + str(epoch) +'.png'), nrow=8)
-        save_image(samples.detach().cpu(), os.path.join(savepath, 'samples_' + str(epoch) +'.png'), nrow=8)
+        recon = (recon + 1)/2
+        samples = (samples + 1)/2
+
+
+        save_image(recon.detach().cpu(), os.path.join(savepath, 'recon_' + str(epoch+1) +'.png'), nrow=8)
+        save_image(samples.detach().cpu(), os.path.join(savepath, 'samples_' + str(epoch+1) +'.png'), nrow=8)
         model.train()
 
