@@ -116,13 +116,13 @@ class AugVAE(torch.nn.Module):
 ##### Hyper Parameters #####
 img_dim = 48
 img_channels = 1
-epochs = 1
+epochs = 40
 batch_size = 96
 lr = 5e-4
-sim_loss_coef = 0.5
+sim_loss_coef = 1.0
 z_dim = 36
 k_dim = 28
-beta = 1.05
+beta = 1.1
 scale_range = (0.9, 0.91)
 save_freq = 1
 savepath = 'vae_aug_test2'
