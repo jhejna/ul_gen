@@ -5,16 +5,20 @@ import numpy as np
 import random
 from PIL import Image
 from torch import nn
-from torchvision.transforms.functional import pad, resize, to_tensor, normalize
+from torchvision.transforms.functional import pad, resize, to_tensor, normalize, rotate
 from torchvision.utils import save_image
 
 class PairedAug(object):
 
-    def __init__(self, output_size, resize=None):
+    def __init__(self, output_size, resize=None, rotate=None):
         self.output_size = output_size
         self.resize = resize
+        self.rotate = rotate
     
     def aug_img(self, img):
+        if not self.rotate is None:
+            angle = random.uniform(*self.rotate)
+            img = rotate(img, angle, fill=(0,))
         if not self.resize is None:
             w, h = img.size
             # assert w == h, "Image must be square"
@@ -37,25 +41,6 @@ class PairedAug(object):
         aug = 2*to_tensor(self.aug_img(aug)) - 1
 
         return {'orig': orig, 'aug': aug}
-
-class Reshape(torch.nn.Module):
-  def __init__(self, output_shape):
-    super(Reshape, self).__init__()
-    self.output_shape = output_shape
-
-  def forward(self, x):
-    return x.view(*((len(x),) + self.output_shape))
-
-class PrintNode(torch.nn.Module):
-  def __init__(self, identifier="print:"):
-    super(PrintNode, self).__init__()
-    self.identifier = identifier
-
-  def forward(self, x):
-    print(self.identifier, x.shape)
-    return x
-
-
 
 class VAE(torch.nn.Module):
 
@@ -116,22 +101,22 @@ class VAE(torch.nn.Module):
 ##### Hyper Parameters #####
 img_dim = 48
 img_channels = 1
-epochs = 1
+epochs = 50
 batch_size = 96
 lr = 5e-4
 z_dim = 36
 k_dim = 28
-beta = 1.05
+beta = 1.1
 scale_range = (0.9, 0.91)
-save_freq = 1
-savepath = 'vae_baseline'
+rot_range = (-75, 75)
+save_freq = 10
+savepath = 'vae_baseline_rot'
 ############################
 os.makedirs(savepath, exist_ok=True)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-mnist_data = torchvision.datasets.MNIST('~/.pytorch/mnist', train=True, download=True, transform=PairedAug(img_dim, resize=scale_range))
+mnist_data = torchvision.datasets.MNIST('~/.pytorch/mnist', train=True, download=True, transform=PairedAug(img_dim, resize=scale_range, rotate=rot_range))
 loader = torch.utils.data.DataLoader(mnist_data, batch_size=batch_size, shuffle=True)
-
 
 model = VAE(img_dim=img_dim, img_channels=img_channels, z_dim=z_dim).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -170,12 +155,7 @@ for epoch in range(epochs):
         z_aug, _ = model.encoder(x_aug)
         diff_vec = z_aug - z_orig
 
-        # Set the first k components of diff vec to be zero, so we only vary along aug components
-        dists_per_z_dim = torch.sum(torch.pow(diff_vec, 2), axis=0)
-        _, zeroing_inds = torch.topk(dists_per_z_dim, k_dim, largest=False)
-
-        diff_vec[:, zeroing_inds] = 0
-
+        # Regular Interpolations
         interpolations = []
         interpolations.append(x_orig)
         for i in range(1, 9):
@@ -189,7 +169,26 @@ for epoch in range(epochs):
         interpolations = (out_interp + 1)/2
         save_image(interpolations.detach().cpu(), os.path.join(savepath, 'interp_' + str(epoch+1) +'.png'), nrow=10)
             
+        # Set the first k components of diff vec to be zero, so we only vary along aug components
+        dists_per_z_dim = torch.sum(torch.pow(diff_vec, 2), axis=0)
+        _, zeroing_inds = torch.topk(dists_per_z_dim, k_dim, largest=False)
+        diff_vec[:, zeroing_inds] = 0
+
+        interpolations = []
+        interpolations.append(x_orig)
+        for i in range(1, 9):
+            interpolations.append(model.decoder(z_orig + 0.111111*i*diff_vec))
+        interpolations.append(x_aug)
+        out_interp = torch.zeros(n_interp*10, img_channels, img_dim, img_dim)
+        for i in range(10):
+            for j in range(n_interp):
+                out_interp[10*j + i, :, :, :] = interpolations[i][j, :, :, :]
+
+        interpolations = (out_interp + 1)/2
+        save_image(interpolations.detach().cpu(), os.path.join(savepath, 'interp_cut_' + str(epoch+1) +'.png'), nrow=10)
+        
         torch.save(model.state_dict(), '%s/aug-vae-%d' % (savepath, epoch+1))
+
         model.train()
 
 

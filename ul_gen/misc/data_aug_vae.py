@@ -5,16 +5,20 @@ import numpy as np
 import random
 from PIL import Image
 from torch import nn
-from torchvision.transforms.functional import pad, resize, to_tensor, normalize
+from torchvision.transforms.functional import pad, resize, to_tensor, normalize, rotate
 from torchvision.utils import save_image
 
 class PairedAug(object):
 
-    def __init__(self, output_size, resize=None):
+    def __init__(self, output_size, resize=None, rotate=None):
         self.output_size = output_size
         self.resize = resize
+        self.rotate = rotate
     
     def aug_img(self, img):
+        if not self.rotate is None:
+            angle = random.uniform(*self.rotate)
+            img = rotate(img, angle, fill=(0,))
         if not self.resize is None:
             w, h = img.size
             # assert w == h, "Image must be square"
@@ -116,29 +120,32 @@ class AugVAE(torch.nn.Module):
 ##### Hyper Parameters #####
 img_dim = 48
 img_channels = 1
-epochs = 1
+epochs = 50
 batch_size = 96
 lr = 5e-4
 sim_loss_coef = 0.5
 z_dim = 36
 k_dim = 28
-beta = 1.05
+beta = 1.1
 scale_range = (0.9, 0.91)
-save_freq = 1
-savepath = 'vae_aug_test2'
+rot_range = (-75, 75)
+save_freq = 10
+savepath = 'vae_aug_test_rot'
 ############################
 os.makedirs(savepath, exist_ok=True)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-mnist_data = torchvision.datasets.MNIST('~/.pytorch/mnist', train=True, download=True, transform=PairedAug(img_dim, resize=scale_range))
+mnist_data = torchvision.datasets.MNIST('~/.pytorch/mnist', train=True, download=True, transform=PairedAug(img_dim, resize=scale_range, rotate=rot_range))
 loader = torch.utils.data.DataLoader(mnist_data, batch_size=batch_size, shuffle=True)
 
 # Debug: print aug pairs next to each other.
+# from matplotlib import pyplot as plt
 # sample, _ = next(iter(loader))
 # plt.imshow(sample['orig'][0][0])
 # plt.show()
 # plt.imshow(sample['aug'][0][0])
 # plt.show()
+# exit()
 
 model = AugVAE(img_dim=img_dim, img_channels=img_channels, z_dim=z_dim).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
