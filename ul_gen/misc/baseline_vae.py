@@ -57,10 +57,10 @@ class PrintNode(torch.nn.Module):
 
 
 
-class AugVAE(torch.nn.Module):
+class VAE(torch.nn.Module):
 
   def __init__(self, img_dim=64, img_channels=3, z_dim=32):
-    super(AugVAE, self).__init__()
+    super(VAE, self).__init__()
     self.img_dim = img_dim
     self.z_dim = z_dim
     self.k_dim = k_dim
@@ -116,16 +116,15 @@ class AugVAE(torch.nn.Module):
 ##### Hyper Parameters #####
 img_dim = 48
 img_channels = 1
-epochs = 40
+epochs = 1
 batch_size = 96
 lr = 5e-4
-sim_loss_coef = 1.0
 z_dim = 36
 k_dim = 28
-beta = 1.1
+beta = 1.05
 scale_range = (0.9, 0.91)
 save_freq = 1
-savepath = 'vae_aug_test2'
+savepath = 'vae_baseline'
 ############################
 os.makedirs(savepath, exist_ok=True)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -133,14 +132,8 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 mnist_data = torchvision.datasets.MNIST('~/.pytorch/mnist', train=True, download=True, transform=PairedAug(img_dim, resize=scale_range))
 loader = torch.utils.data.DataLoader(mnist_data, batch_size=batch_size, shuffle=True)
 
-# Debug: print aug pairs next to each other.
-# sample, _ = next(iter(loader))
-# plt.imshow(sample['orig'][0][0])
-# plt.show()
-# plt.imshow(sample['aug'][0][0])
-# plt.show()
 
-model = AugVAE(img_dim=img_dim, img_channels=img_channels, z_dim=z_dim).to(device)
+model = VAE(img_dim=img_dim, img_channels=img_channels, z_dim=z_dim).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
 for epoch in range(epochs):
@@ -151,20 +144,12 @@ for epoch in range(epochs):
         x_hat, mu, log_var = model(x)
         kl_loss = torch.sum(-0.5*(1 + log_var - mu.pow(2) - log_var.exp())) / len(x) # Divide by batch size
         recon_loss = torch.sum((x - x_hat).pow(2)) / len(x)
-        # Compute the similarity loss
-        mu_orig, mu_aug = torch.chunk(mu, 2, dim=0)
-        log_var_orig, log_var_aug = torch.chunk(log_var, 2, dim=0)
-        mu_orig, mu_aug = mu_orig[:, :k_dim], mu_aug[:, :k_dim]
-        log_var_orig, log_var_aug = log_var_orig[:, :k_dim], log_var_aug[:, :k_dim]
-        # KL divergence between original and augmented.
-        sim_loss = torch.sum(log_var_aug - log_var_orig + 0.5*(log_var_orig.exp() + (mu_orig - mu_aug).pow(2))/log_var_aug.exp() - 0.5)/ (len(x) // 2)
-        # sim_loss = torch.sum(0.5*(mu_orig - mu_aug).pow(2)) / len(x)
 
-        loss = recon_loss + beta * kl_loss + sim_loss_coef * sim_loss
+        loss = recon_loss + beta * kl_loss
         loss.backward()
         optimizer.step()
 
-    print('Epoch %d Recon Loss: %.3f KL Loss: %.3f Sim Loss: %.3f' % (epoch+1, recon_loss.item(), kl_loss.item(), sim_loss.item()))
+    print('Epoch %d Recon Loss: %.3f KL Loss: %.3f' % (epoch+1, recon_loss.item(), kl_loss.item()))
     if (epoch + 1) % save_freq == 0:
         # Save reconstructions and samples:
         model.eval()
@@ -184,8 +169,12 @@ for epoch in range(epochs):
         z_orig, _ = model.encoder(x_orig)
         z_aug, _ = model.encoder(x_aug)
         diff_vec = z_aug - z_orig
+
         # Set the first k components of diff vec to be zero, so we only vary along aug components
-        diff_vec[:, :k_dim] = 0
+        dists_per_z_dim = torch.sum(torch.pow(diff_vec, 2), axis=0)
+        _, zeroing_inds = torch.topk(dists_per_z_dim, k_dim, largest=False)
+
+        diff_vec[:, zeroing_inds] = 0
 
         interpolations = []
         interpolations.append(x_orig)
