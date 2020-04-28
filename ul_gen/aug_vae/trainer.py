@@ -59,14 +59,12 @@ def train(params):
                 # KL divergence between original and augmented.
                 sim_loss = torch.sum(log_var_aug - log_var_orig + 0.5*(log_var_orig.exp() + (mu_orig - mu_aug).pow(2))/log_var_aug.exp() - 0.5)/ (len(x) // 2)
                 # sim_loss = torch.sum(0.5*(mu_orig - mu_aug).pow(2)) / len(x)
+                loss = recon_loss + beta * kl_loss + sim_loss_coef * sim_loss
             else:
-                sim_loss = 0.0
+                loss = recon_loss + beta * kl_loss
 
-            loss = recon_loss + beta * kl_loss + sim_loss_coef * sim_loss
             loss.backward()
             optimizer.step()
-
-            break
             
         if params["sim_loss_coef"] > 0:
             sim_loss_item = sim_loss.item()
