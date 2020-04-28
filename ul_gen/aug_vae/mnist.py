@@ -9,14 +9,14 @@ params = {
     "z_dim": 16,
     "k_dim": 12,
     "beta": 1.1,
-    "epochs" : 50,
+    "epochs" : 60,
     "save_freq": 10,
     "savepath": "mnist_aug_vae",
     "dataset": "mnist",
     "final_act" : "tanh",
     "dataset_args": {
         "output_size": 48,
-        "resize": (0.7, 0.96),
+        "resize": (0.7, 1.05),
         "rotate": (-75, 75),
     }
 }

@@ -9,7 +9,7 @@ params = {
     "z_dim": 32,
     "k_dim": 28,
     "beta": 1.1,
-    "epochs" : 50,
+    "epochs" : 60,
     "save_freq": 10,
     "savepath": "chairs_aug_vae",
     "dataset": "chairs",
