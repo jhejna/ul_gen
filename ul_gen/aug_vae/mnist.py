@@ -4,7 +4,7 @@ params = {
     "img_dim" : 48,
     "img_channels": 1,
     "batch_size": 96,
-    "lr": 2.5e-4,
+    "lr": 1e-4,
     "sim_loss_coef": 1.0,
     "z_dim": 16,
     "k_dim": 12,
@@ -16,7 +16,7 @@ params = {
     "final_act" : "tanh",
     "dataset_args": {
         "output_size": 48,
-        "resize": (0.7, 1.05),
+        "resize": (0.7, 1.1),
         "rotate": (-75, 75),
     }
 }
