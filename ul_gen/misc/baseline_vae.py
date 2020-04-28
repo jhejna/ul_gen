@@ -165,14 +165,14 @@ for epoch in range(epochs):
         save_image(samples.detach().cpu(), os.path.join(savepath, 'samples_' + str(epoch+1) +'.png'), nrow=8)
 
         # Now, save the interpolations.
-        n_interp = 8
+        n_interp = 10
         x_orig, x_aug = torch.chunk(x, 2, dim=0)
         x_orig, x_aug  = x_orig[:n_interp], x_aug[:n_interp]
         z_orig, _ = model.encoder(x_orig)
         z_aug, _ = model.encoder(x_aug)
-        diff_vec = z_aug - z_orig
 
         # Regular Interpolations
+        diff_vec = z_aug - z_orig
         interpolations = []
         interpolations.append(x_orig)
         for i in range(1, 9):
@@ -182,7 +182,6 @@ for epoch in range(epochs):
         for i in range(10):
             for j in range(n_interp):
                 out_interp[10*j + i, :, :, :] = interpolations[i][j, :, :, :]
-
         interpolations = (out_interp + 1)/2
         save_image(interpolations.detach().cpu(), os.path.join(savepath, 'interp_' + str(epoch+1) +'.png'), nrow=10)
             
@@ -190,7 +189,6 @@ for epoch in range(epochs):
         dists_per_z_dim = torch.sum(torch.pow(diff_vec, 2), axis=0)
         _, zeroing_inds = torch.topk(dists_per_z_dim, k_dim, largest=False)
         diff_vec[:, zeroing_inds] = 0
-
         interpolations = []
         interpolations.append(x_orig)
         for i in range(1, 9):
