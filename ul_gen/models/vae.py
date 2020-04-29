@@ -78,9 +78,11 @@ class Decoder(nn.Module):
 
 class VaePolicy(nn.Module):
 
-    def __init__(self, zdim, channel_in=3, img_height=64, shared_layers=[128,], 
-                        policy_layers=[15,], value_layers=[1,], act_fn='relu', deterministic=False,
-                        detach_vae=False):
+    def __init__(self, zdim, channel_in=3, img_height=64, shared_layers=[], 
+                        policy_layers=[64, 64, 15,], value_layers=[64, 64, 1,], act_fn='relu', deterministic=True,
+                        detach_vae=False,
+                        detach_value=False,
+                        detach_policy=False):
         super().__init__()
         self.zdim = zdim
         self.detach_vae = detach_vae
@@ -175,8 +177,8 @@ TEST POLICY
 '''
 
 class BaselinePolicy(nn.Module):
-    def __init__(self, channel_in=3, img_height=64, shared_layers=[128,], 
-                        policy_layers=[15,], value_layers=[1,], act_fn='relu',):
+    def __init__(self, channel_in=3, img_height=64, shared_layers=[], 
+                        policy_layers=[64, 64, 15,], value_layers=[64, 64, 1,], act_fn='relu',):
 
         super().__init__()
 

@@ -1,1 +1,0 @@
-{"img_dim": 48, "img_channels": 1, "batch_size": 96, "lr": 0.0005, "sim_loss_coef": 1.0, "z_dim": 32, "k_dim": 4, "beta": 1.1, "epochs": 50, "save_freq": 10, "savepath": "mnist_aug_vae", "dataset": "mnist", "final_act": "tanh", "dataset_args": {"output_size": 48, "resize": [0.7, 0.91], "rotate": [-75, 75]}}

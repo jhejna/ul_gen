@@ -26,10 +26,13 @@ class PPO_VAE(PolicyGradientAlgo):
             self,
             discount=0.99,
             learning_rate=0.001,
+            vae_learning_rate=0.0001,
             value_loss_coeff=1.,
             entropy_loss_coeff=0.01,
             OptimCls=torch.optim.Adam,
             optim_kwargs=None,
+            VaeOptimCls=torch.optim.Adam,
+            vae_optim_kwargs=None,
             clip_grad_norm=1.,
             initial_optim_state_dict=None,
             gae_lambda=1,
@@ -37,11 +40,13 @@ class PPO_VAE(PolicyGradientAlgo):
             epochs=4,
             ratio_clip=0.1,
             linear_lr_schedule=True,
+            vae_linear_lr_schedule=True,
             normalize_advantage=False,
             vae_beta=0.9,
             vae_loss_coeff=0.1,
             vae_loss_type="l2",
-            vae_norm_loss=True,
+            vae_norm_loss=False,
+            vae_update_freq=1
             ):
         """Saves input settings."""
         if optim_kwargs is None:
@@ -60,7 +65,13 @@ class PPO_VAE(PolicyGradientAlgo):
                 optimizer=self.optimizer,
                 lr_lambda=lambda itr: (self.n_itr - itr) / self.n_itr)  # Step once per itr.
             self._ratio_clip = self.ratio_clip  # Save base value.
-
+        # self.vae_optimizer = VaeOptimCls(self.agent.parameters(),lr=self.vae_learning_rate, **self.vae_optim_kwargs)
+        # if self.vae_linear_lr_schedule:
+        #     self.vae_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(
+        #         optimizer=self.vae_optimizer,
+        #         lr_lambda=lambda itr: (self.n_itr - itr) / self.n_itr)  # Step once per itr.
+        #     )
+    
     def optimize_agent(self, itr, samples):
         """
         Train the agent, for multiple epochs over minibatches taken from the
@@ -105,7 +116,7 @@ class PPO_VAE(PolicyGradientAlgo):
                 self.optimizer.zero_grad()
                 rnn_state = init_rnn_state[B_idxs] if recurrent else None
                 # NOTE: if not recurrent, will lose leading T dim, should be OK.
-                loss, entropy, perplexity = self.loss(
+                loss, entropy, perplexity. vae_loss = self.loss(
                     *loss_inputs[T_idxs, B_idxs], rnn_state)
                 loss.backward()
                 grad_norm = torch.nn.utils.clip_grad_norm_(
@@ -120,6 +131,8 @@ class PPO_VAE(PolicyGradientAlgo):
         if self.linear_lr_schedule:
             self.lr_scheduler.step()
             self.ratio_clip = self._ratio_clip * (self.n_itr - itr) / self.n_itr
+        # if self.vae_lr_scheduler:
+        #     self.vae_lr_scheduler.step()
 
         return opt_info
 
@@ -174,14 +187,14 @@ class PPO_VAE(PolicyGradientAlgo):
             raise NotImplementedError
         
         
-        vae_loss = recon_loss + self.vae_beta * kl_loss
+        vae_loss = self.vae_loss_coef * (recon_loss + self.vae_beta * kl_loss)
 
-        ppo_loss = pi_loss + value_loss + entropy_loss # + self.vae_loss_coeff * vae_loss
+        policy_loss = pi_loss + value_loss + entropy_loss # + self.vae_loss_coeff * vae_loss
         
         if self.vae_norm_loss:
             vae_loss = vae_loss * torch.abs(ppo_loss.detach()) / vae_loss.detach()
 
-        loss = ppo_loss + self.vae_loss_coeff * vae_loss
+        loss = policy_loss + self.vae_loss_coef * vae_loss
 
         perplexity = dist.mean_perplexity(dist_info, valid)
         return loss, entropy, perplexity

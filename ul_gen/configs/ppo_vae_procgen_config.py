@@ -6,7 +6,7 @@ config = dict(
     agent=dict(),
     algo=dict(
         discount=0.999,
-        learning_rate=8e-4,
+        learning_rate=3e-4,
         value_loss_coeff=0.5,
         entropy_loss_coeff=0.01,
         clip_grad_norm=1.,
@@ -17,7 +17,7 @@ config = dict(
         ratio_clip=.2,
         normalize_advantage=True,
         vae_beta=1,
-        vae_loss_coeff=0.25,
+        vae_loss_coeff=0.5,
         vae_loss_type="l2",
         vae_norm_loss=True,
     ),
@@ -34,10 +34,10 @@ config = dict(
         "distribution_mode": "hard"
     },
     model=dict(
-        zdim=200,
+        zdim=128,
         img_height=64,
-        detach_vae=False,
-        deterministic=False,
+        detach_vae=True,
+        deterministic=True,
         policy_layers=[15],
         value_layers=[1]
     ),

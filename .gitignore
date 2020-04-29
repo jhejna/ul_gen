@@ -1,6 +1,7 @@
 # Save files
 ul_gen/tf/data/
 ul_gen/aug_vae/data
+ul_gen/aug_vae/output
 
 # virtual environments
 venv/
