@@ -41,6 +41,7 @@ class PPO_VAE(PolicyGradientAlgo):
             vae_beta=0.9,
             vae_loss_coeff=0.1,
             vae_loss_type="l2",
+            vae_norm_loss=True,
             ):
         """Saves input settings."""
         if optim_kwargs is None:
@@ -171,10 +172,16 @@ class PPO_VAE(PolicyGradientAlgo):
             recon_loss = torch.nn.functional.binary_cross_entropy(reconstruction, obs)
         else:
             raise NotImplementedError
-
+        
+        
         vae_loss = recon_loss + self.vae_beta * kl_loss
 
-        loss = pi_loss + value_loss + entropy_loss + self.vae_loss_coeff * vae_loss
+        ppo_loss = pi_loss + value_loss + entropy_loss # + self.vae_loss_coeff * vae_loss
+        
+        if self.vae_norm_loss:
+            vae_loss = vae_loss * torch.abs(ppo_loss.detach()) / vae_loss.detach()
+
+        loss = ppo_loss + self.vae_loss_coeff * vae_loss
 
         perplexity = dist.mean_perplexity(dist_info, valid)
         return loss, entropy, perplexity

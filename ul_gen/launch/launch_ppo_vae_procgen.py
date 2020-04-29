@@ -6,7 +6,7 @@ from datetime import datetime
 import os 
 
 affinity_code = encode_affinity(
-    n_cpu_core=1,
+    n_cpu_core=2,
     n_gpu=1,
     # hyperthread_offset=20,
     n_socket=1
@@ -30,8 +30,8 @@ print("Log_dirs", log_dirs)
 
 script = os.getcwd() + "/ul_gen/launch/train_ppo_vae_procgen.py"
 script = "launch/train_ppo_vae_procgen.py"
-experiment_title = "ppo_procgen"
-default_config_key = "ppo"
+experiment_title = "ppo_vae_procgen"
+default_config_key = "ppo_vae"
 
 run_experiments(
     script=script,
