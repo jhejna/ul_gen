@@ -205,9 +205,9 @@ class BaselinePolicy(nn.Module):
             nn.ReLU(True),
             
             nn.Flatten(),
-            nn.Linear(final_dim * 256, 256) # finally convert to FC.
+            nn.Linear(final_dim * 256, 128) # finally convert to FC.
             )
-        last_layer = 256
+        last_layer = 128
         shared_extractor = [act_fn()]
         for l in shared_layers:
             shared_extractor.append(nn.Linear(last_layer, l))
