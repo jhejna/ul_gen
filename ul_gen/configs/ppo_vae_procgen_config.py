@@ -19,7 +19,7 @@ config = dict(
         vae_beta=1,
         vae_loss_coeff=0.5,
         vae_loss_type="l2",
-        vae_norm_loss=True,
+        vae_norm_loss=False,
     ),
     env={
         "id": "procgen:procgen-coinrun-v0",

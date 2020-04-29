@@ -116,7 +116,7 @@ class PPO_VAE(PolicyGradientAlgo):
                 self.optimizer.zero_grad()
                 rnn_state = init_rnn_state[B_idxs] if recurrent else None
                 # NOTE: if not recurrent, will lose leading T dim, should be OK.
-                loss, entropy, perplexity. vae_loss = self.loss(
+                loss, entropy, perplexity = self.loss(
                     *loss_inputs[T_idxs, B_idxs], rnn_state)
                 loss.backward()
                 grad_norm = torch.nn.utils.clip_grad_norm_(
@@ -187,14 +187,14 @@ class PPO_VAE(PolicyGradientAlgo):
             raise NotImplementedError
         
         
-        vae_loss = self.vae_loss_coef * (recon_loss + self.vae_beta * kl_loss)
+        vae_loss = self.vae_loss_coeff * (recon_loss + self.vae_beta * kl_loss)
 
         policy_loss = pi_loss + value_loss + entropy_loss # + self.vae_loss_coeff * vae_loss
         
         if self.vae_norm_loss:
-            vae_loss = vae_loss * torch.abs(ppo_loss.detach()) / vae_loss.detach()
+            vae_loss = vae_loss * torch.abs(policy_loss.detach()) / vae_loss.detach()
 
-        loss = policy_loss + self.vae_loss_coef * vae_loss
+        loss = policy_loss +vae_loss
 
         perplexity = dist.mean_perplexity(dist_info, valid)
         return loss, entropy, perplexity
