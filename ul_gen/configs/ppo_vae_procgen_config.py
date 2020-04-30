@@ -1,4 +1,3 @@
-
 configs = dict()
 
 config = dict(
@@ -35,11 +34,15 @@ config = dict(
     },
     model=dict(
         zdim=200,
-        img_height=64,
+        img_shape=(3,64,64),
         detach_vae=False,
         deterministic=False,
         policy_layers=[15],
-        value_layers=[1]
+        value_layers=[1],
+        noise_prob=0.,        
+        noise_weight=1.,
+        no_noise_weight=0.,
+        arch_type=0
     ),
     optim=dict(),
     runner=dict(
@@ -59,7 +62,7 @@ pretrain_config = dict(
     load_path="",
     env={
         "id": "procgen:procgen-coinrun-v0",
-        "num_levels": 500,
+        "num_levels": 700,
         "start_level": 0,
         "distribution_mode": "hard"
     },
@@ -78,12 +81,16 @@ pretrain_config = dict(
         lr=1e-4
     ),
     model=dict(
-        zdim=200,
-        img_height=64,
+        zdim=150,
+        img_shape=(3,64,64),
         detach_vae=False,
         deterministic=False,
         policy_layers=[15],
-        value_layers=[1]
+        value_layers=[1],
+        noise_prob=0.5,
+        noise_weight=1.,
+        no_noise_weight=1,
+        arch_type=1,
     ),
     train_steps=int(1e6),
     log_freq=1000,
