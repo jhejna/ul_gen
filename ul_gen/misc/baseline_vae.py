@@ -203,7 +203,6 @@ for epoch in range(epochs):
         save_image(interpolations.detach().cpu(), os.path.join(savepath, 'interp_cut_' + str(epoch+1) +'.png'), nrow=10)
         
         torch.save(model.state_dict(), '%s/aug-vae-%d' % (savepath, epoch+1))
-
         model.train()
 
 

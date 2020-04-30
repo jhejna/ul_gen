@@ -120,9 +120,12 @@ class Decoder(nn.Module):
 
 class VaePolicy(nn.Module):
 
-    def __init__(self, zdim, img_shape=(3,64,64), shared_layers=[128,], 
-                        policy_layers=[15,], value_layers=[1,], act_fn='relu', deterministic=False,
-                        detach_vae=False, arch_type=0,
+    def __init__(self, zdim, img_shape=(3,64,64), shared_layers=[,], 
+                        policy_layers=[64, 64, 15,], value_layers=[64, 64, 1,], 
+                        encoder_layers=[32, 64, 128, 256], decoder_layers=[256, 128, 64, 32],
+                        act_fn='relu', deterministic=False,
+                        detach_vae=False, detach_value=False,
+                        detach_policy=False, arch_type=0.,
                         noise_prob=0.,noise_weight=1.,no_noise_weight=0.):
 
         """
@@ -139,8 +142,8 @@ class VaePolicy(nn.Module):
         self.deterministic = deterministic
         self.noise_prob = noise_prob
         self.noise_weight, self.no_noise_weight = noise_weight, no_noise_weight
-        self.encoder = Encoder(zdim,img_shape,arch_type)
-        self.decoder = Decoder(zdim,img_shape,arch_type)
+        self.encoder = Encoder(zdim,img_shape,arch_type,hidden_dims=encoder_layers)
+        self.decoder = Decoder(zdim,img_shape,arch_type,hidden_dims=decoder_layers)
         act_fn = {
             'relu' : lambda: nn.ReLU(),
             'tanh' : lambda: nn.Tanh()
@@ -241,37 +244,19 @@ TEST POLICY
 '''
 
 class BaselinePolicy(nn.Module):
-    def __init__(self, channel_in=3, img_height=64, shared_layers=[128,], 
-                        policy_layers=[15,], value_layers=[1,], act_fn='relu',):
+    def __init__(self, img_shape=(3, 64, 64), shared_layers=[], 
+                        zdim=128, arch_type=0,encoder_layers=[32, 64, 128, 256],
+                        policy_layers=[64, 64, 15,], value_layers=[64, 64, 1,], act_fn='relu',):
 
         super().__init__()
 
-        self.h = img_height
-        final_dim = (self.h//8)**2
+        self.encoder =  Encoder(zdim,img_shape,arch_type,hidden_dims=encoder_layers)
         act_fn = {
             'relu' : lambda: nn.ReLU(),
             'tanh' : lambda: nn.Tanh()
         }[act_fn]
 
-        self.use_cuda = torch.cuda.is_available()
-
-        self.main = nn.Sequential(
-            nn.Conv2d(channel_in, 32, 1), # h x h
-            nn.ReLU(True),
-
-            nn.Conv2d(32, 64, 3, 2, 1), # h/2 x h/2
-            nn.ReLU(True), 
-
-            nn.Conv2d(64, 128, 3, 2, 1), # h/4 x h/4
-            nn.ReLU(True),
-
-            nn.Conv2d(128, 256, 3, 2, 1), # h/8 x h/8
-            nn.ReLU(True),
-            
-            nn.Flatten(),
-            nn.Linear(final_dim * 256, 256) # finally convert to FC.
-            )
-        last_layer = 256
+        last_layer = zdim
         shared_extractor = [act_fn()]
         for l in shared_layers:
             shared_extractor.append(nn.Linear(last_layer, l))
@@ -300,7 +285,7 @@ class BaselinePolicy(nn.Module):
         lead_dim, T, B, img_shape = infer_leading_dims(observation, 3)
         obs = observation.view(T*B, *img_shape)
         obs = obs.permute(0, 3, 1, 2).float() / 255.
-        extractor_in = self.main(obs)
+        _,extractor_in,_ = self.encoder(obs)
         extractor_out = self.shared_extractor(extractor_in)
         act_dist = self.policy(extractor_out)
         value = self.value(extractor_out).squeeze(-1)
