@@ -21,9 +21,7 @@ def salt_and_pepper(img,prob):
     noisy[:,idxzero] = 0.
     noisy[:,idxone] = 1.
     noisy=noisy.reshape(-1,c,h,w)
-    save_image(noisy,"/home/karam/Downloads/noisy.png")
-    import ipdb; ipdb.set_trace()
-    return noisy, np.concatenate((idxone,idxzero),dim=0)
+    return noisy, np.concatenate((idxone,idxzero),axis=0)
 
 class Encoder(nn.Module):
     def __init__(self, zdim, img_shape, arch_type, hidden_dims=[32,64,128,256]):
