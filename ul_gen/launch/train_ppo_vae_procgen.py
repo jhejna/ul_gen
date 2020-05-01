@@ -1,4 +1,4 @@
-
+import json
 import sys
 import torch
 from rlpyt.utils.launching.affinity import affinity_from_code
@@ -41,11 +41,14 @@ def build_and_train(slot_affinity_code, log_dir, run_ID, config_key):
     )
     if config["checkpoint"]:
         model_state_dict = torch.load(config["checkpoint"])
+        print("Loaded.")
+
     else:
         model_state_dict = None
 
     algo = PPO_VAE(optim_kwargs=config["optim"], **config["algo"])
-    agent = CategoricalPgVaeAgent(ModelCls=VaePolicy, model_kwargs=config["model"], initial_model_state_dict=model_state_dict, **config["agent"])
+    agent = CategoricalPgVaeAgent(ModelCls=VaePolicy, 
+        model_kwargs=config["model"], initial_model_state_dict=model_state_dict, **config["agent"])
     runner = MinibatchRlEvalVAE(
         algo=algo,
         agent=agent,

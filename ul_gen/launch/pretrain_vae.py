@@ -15,7 +15,6 @@ from ul_gen.configs.ppo_vae_procgen_config import configs
 from ul_gen.models.vae import VaePolicy
 
 import argparse
-import json
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--savepath",type=str,default="./vae_data/experiment/")

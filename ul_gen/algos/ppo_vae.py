@@ -1,6 +1,6 @@
 
 import torch
-
+from torchvision.utils import save_image
 from rlpyt.algos.pg.base import PolicyGradientAlgo, OptInfo
 from rlpyt.agents.base import AgentInputs, AgentInputsRnn
 from rlpyt.utils.tensor import valid_mean
@@ -46,7 +46,7 @@ class PPO_VAE(PolicyGradientAlgo):
             vae_loss_coeff=0.1,
             vae_loss_type="l2",
             vae_norm_loss=False,
-            vae_update_freq=1
+            vae_update_freq=1,
             ):
         """Saves input settings."""
         if optim_kwargs is None:
@@ -152,9 +152,8 @@ class PPO_VAE(PolicyGradientAlgo):
             init_rnn_state = buffer_method(init_rnn_state, "contiguous")
             dist_info, value, _rnn_state = self.agent(*agent_inputs, init_rnn_state)
         else:
-            dist_info, value, latent, reconstruction = self.agent(*agent_inputs)
+            (dist_info, value, latent, reconstruction), noise_idx = self.agent(*agent_inputs)
         dist = self.agent.distribution
-
         ratio = dist.likelihood_ratio(action, old_dist_info=old_dist_info,
             new_dist_info=dist_info)
         surr_1 = ratio * advantage
@@ -180,7 +179,16 @@ class PPO_VAE(PolicyGradientAlgo):
 
         kl_loss = torch.sum(-0.5*(1 + logvar - mu.pow(2) - logvar.exp())) / bs
         if self.vae_loss_type == "l2":
-            recon_loss = torch.sum( (obs - reconstruction).pow(2) ) / bs
+            if self.agent.model.noise_prob:
+                obs, reconstruction = obs.reshape(bs,-1), reconstruction.reshape(bs,-1)
+                noise_idx = noise_idx.reshape(-1)
+                noise = torch.sum((obs[:,noise_idx]-reconstruction[:,noise_idx]).pow(2)) / bs
+                no_noise_idx = 1 - noise_idx
+                no_noise = torch.sum((obs[:,no_noise_idx]-reconstruction[:,no_noise_idx]).pow(2)) / bs
+                recon_loss = self.agent.model.noise_weight * noise + self.agent.model.no_noise_weight * no_noise
+            else:
+                recon_loss = torch.sum((obs - reconstruction).pow(2)) / bs
+
         elif self.vae_loss_type == "bce":
             recon_loss = torch.nn.functional.binary_cross_entropy(reconstruction, obs)
         else:

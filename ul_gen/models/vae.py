@@ -21,6 +21,7 @@ def salt_and_pepper(img,prob):
     noisy[:,idxzero] = 0.
     noisy[:,idxone] = 1.
     noisy=noisy.reshape(-1,c,h,w)
+    # save_image(noisy, "/home/karam/Downloads/noise.png")
     return noisy, np.concatenate((idxone,idxzero),axis=0)
 
 class Encoder(nn.Module):
@@ -61,7 +62,7 @@ class Encoder(nn.Module):
         x = self.main(x).reshape(bs,-1)
         mu = self.mu(x)
         logsd = self.logsd(x)
-        eps = buffer_to(Variable(torch.randn([bs, self.zdim])), device)
+        eps = buffer_to(Variable(torch.randn([bs, self.zdim])), x.device)
         z = eps * logsd.exp() + mu
         return z, mu, logsd
 
@@ -120,7 +121,7 @@ class Decoder(nn.Module):
 
 class VaePolicy(nn.Module):
 
-    def __init__(self, zdim, img_shape=(3,64,64), shared_layers=[,], 
+    def __init__(self, zdim, img_shape=(3,64,64), shared_layers=[], 
                         policy_layers=[64, 64, 15,], value_layers=[64, 64, 1,], 
                         encoder_layers=[32, 64, 128, 256], decoder_layers=[256, 128, 64, 32],
                         act_fn='relu', deterministic=False,
