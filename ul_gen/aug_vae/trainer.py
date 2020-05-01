@@ -83,7 +83,7 @@ def train(params):
             samples = model.decoder(zs)
             samples = (samples + 1)/2
             save_image(samples.detach().cpu(), os.path.join(savepath, 'samples_' + str(epoch+1) +'.png'), nrow=8)
-
+            
             # Prep For Interpolations
             n_interp = 8
             x_orig, x_aug = torch.chunk(x, 2, dim=0)
