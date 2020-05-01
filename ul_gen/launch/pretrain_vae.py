@@ -17,7 +17,7 @@ from ul_gen.models.vae import VaePolicy
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--savepath",type=str,default="./vae_data/")
+parser.add_argument("--savepath",type=str,default="./vae_data/experiment/")
 args = parser.parse_args()
 
 os.makedirs(args.savepath, exist_ok=True)
@@ -35,7 +35,8 @@ affinity_code = encode_affinity(
 affinity = affinity_from_code(prepend_run_slot(0, affinity_code))
 # Get Params
 config = configs["pretrain"]
-
+with open('%s/params.json' % args.savepath, 'w') as fp:
+    json.dump(config, fp, indent=4, sort_keys=True)
 # Setup Data Collection
 # The below are util classes
 

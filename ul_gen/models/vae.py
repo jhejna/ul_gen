@@ -10,85 +10,141 @@ from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 from rlpyt.utils.buffer import buffer_to
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+def salt_and_pepper(img,prob):
+    assert prob <= 1
+    c,h,w = img.shape[-3:]
+
+    noisy = img.reshape(-1,c*h*w)
+    rnd = np.random.rand(c*h*w)
+    idxzero = (rnd < prob/2).nonzero()[0]
+    idxone = (rnd > 1 - prob/2).nonzero()[0]
+    noisy[:,idxzero] = 0.
+    noisy[:,idxone] = 1.
+    noisy=noisy.reshape(-1,c,h,w)
+    # save_image(noisy, "/home/karam/Downloads/noise.png")
+    return noisy, np.concatenate((idxone,idxzero),axis=0)
+
 class Encoder(nn.Module):
-    def __init__(self,zdim,channel_in,img_height):
+    def __init__(self, zdim, img_shape, arch_type, hidden_dims=[32,64,128,256]):
         super().__init__()
 
         self.zdim = zdim
-        self.h = img_height
-        final_dim = (self.h//8)**2
+        in_channels, self.h, _ = img_shape
+        C = (self.h // 2 ** len(hidden_dims))**2
 
-        self.use_cuda = torch.cuda.is_available()
+        if arch_type == 0:
+            modules = []
+            for h_dim in hidden_dims:
+                modules.append(
+                    nn.Sequential(
+                        nn.Conv2d(in_channels, h_dim, 4, 2, 1),
+                        nn.ReLU(True)))
+                in_channels = h_dim
 
-        self.main = nn.Sequential(
-            nn.Conv2d(channel_in, 32, 1), # h x h
-            nn.ReLU(True),
+        elif arch_type == 1:
+            modules=[nn.BatchNorm2d(in_channels)]
 
-            nn.Conv2d(32, 64, 3, 2, 1), # h/2 x h/2
-            nn.ReLU(True), 
+            for h_dim in hidden_dims:
+                modules.append(
+                    nn.Sequential(
+                        nn.Conv2d(in_channels, h_dim, 4, 2, 1),
+                        nn.BatchNorm2d(h_dim),
+                        nn.LeakyReLU(.2)))
+                in_channels = h_dim
 
-            nn.Conv2d(64, 128, 3, 2, 1), # h/4 x h/4
-            nn.ReLU(True),
+        self.main = nn.Sequential(*modules)
 
-            nn.Conv2d(128, 256, 3, 2, 1), # h/8 x h/8
-            nn.ReLU(True)
-            )
-
-        self.mu = nn.Linear(final_dim * 256, zdim)
-        self.logsd = nn.Linear(final_dim * 256, zdim)
+        self.mu = nn.Linear(hidden_dims[-1] * C, zdim)
+        self.logsd = nn.Linear(hidden_dims[-1] * C, zdim)
 
     def forward(self,x):
         bs = x.shape[0]
         x = self.main(x).reshape(bs,-1)
         mu = self.mu(x)
         logsd = self.logsd(x)
-        if self.use_cuda: 
-            eps = buffer_to(Variable(torch.randn([bs, self.zdim])), x.device)
-        else:
-            eps = Variable(torch.randn([bs, self.zdim]))
+        eps = buffer_to(Variable(torch.randn([bs, self.zdim])), x.device)
         z = eps * logsd.exp() + mu
         return z, mu, logsd
 
 class Decoder(nn.Module):
-    def __init__(self, zdim, channel_in, img_height):
+    def __init__(self, zdim, img_shape, arch_type, hidden_dims=[256,128,64,32]):
+        """
+        """
+
         super().__init__()
 
-        self.h = img_height
-        self.odim = self.h*self.h*channel_in
-        self.init_dim = (self.h//8)
+        channel_out, self.h, _ = img_shape
+        self.odim = self.h*self.h*channel_out
+        self.init_dim = (self.h // 2 ** len(hidden_dims))
+        C = self.init_dim **2
 
-        self.lin = nn.Linear(zdim, self.init_dim * self.init_dim * 128)
+        self.lin = nn.Linear(zdim, C * hidden_dims[0] )
         self.relu = nn.ReLU(True)
-        self.main = nn.Sequential(
-            nn.ConvTranspose2d(128, 128, 4, 2, 1), # h/4 x h/4
-            nn.ReLU(True),
-            nn.ConvTranspose2d(128, 64, 4, 2, 1), # h/2 x h/2
-            nn.ReLU(True),
-            nn.ConvTranspose2d(64, 32, 4, 2, 1), # h x h
-            nn.ReLU(True),
-            nn.ConvTranspose2d(32, 3, 3, 1, 1), # h x h
-            nn.Sigmoid()
-        )
+        modules=[nn.ConvTranspose2d(hidden_dims[0],hidden_dims[1], 4, 2, 1)] 
+        in_channels = hidden_dims[1]    
+
+        if arch_type == 0:
+            # self.main = nn.Sequential(
+            #     nn.ConvTranspose2d(128, 128, 4, 2, 1), # h/4 x h/4
+            #     nn.ReLU(True),
+            #     nn.ConvTranspose2d(128, 64, 4, 2, 1), # h/2 x h/2
+            #     nn.ReLU(True),
+            #     nn.ConvTranspose2d(64, 32, 4, 2, 1), # h x h
+            #     nn.ReLU(True),
+            #     nn.ConvTranspose2d(32, 3, 3, 1, 1), # h x h
+            #     nn.Sigmoid()
+            # )
+            for h_dim in hidden_dims[2:]:
+                modules.append(
+                    nn.Sequential(
+                        nn.ReLU(True),
+                        nn.ConvTranspose2d(in_channels, h_dim, 4, 2, 1)))
+                in_channels = h_dim
+        elif arch_type==1:  
+            for h_dim in hidden_dims[2:]:
+                modules.append(
+                    nn.Sequential(
+                        nn.BatchNorm2d(in_channels),
+                        nn.LeakyReLU(.2),
+                        nn.ConvTranspose2d(in_channels, h_dim, 4, 2, 1)))
+                in_channels = h_dim
+        modules.append(nn.Sequential(
+            nn.ConvTranspose2d(in_channels, channel_out, 4, 2, 1),
+            nn.Sigmoid()))
+        self.main = nn.Sequential(*modules)
 
     def forward(self, z):
         bs = z.shape[0]
-        z = self.relu(self.lin(z)).reshape(bs, 128, self.init_dim, self.init_dim)
+        z = self.relu(self.lin(z)).reshape(bs, -1, self.init_dim, self.init_dim)
         x = self.main(z)
         return x
 
 class VaePolicy(nn.Module):
 
-    def __init__(self, zdim, channel_in=3, img_height=64, shared_layers=[], 
-                        policy_layers=[64, 64, 15,], value_layers=[64, 64, 1,], act_fn='relu', deterministic=True,
-                        detach_vae=False,
-                        detach_value=False,
-                        detach_policy=False):
+    def __init__(self, zdim, img_shape=(3,64,64), shared_layers=[], 
+                        policy_layers=[64, 64, 15,], value_layers=[64, 64, 1,], 
+                        encoder_layers=[32, 64, 128, 256], decoder_layers=[256, 128, 64, 32],
+                        act_fn='relu', deterministic=False,
+                        detach_vae=False, detach_value=False,
+                        detach_policy=False, arch_type=0.,
+                        noise_prob=0.,noise_weight=1.,no_noise_weight=0.):
+
+        """
+        arch_type: 0 for Conv2d-ReLU; 1 for Conv2d-BN-LeakyReLU
+        noise_prob: Makes noise_prob % of images 0 or 1 (salt-and-pepper) before encoding
+        noise_weight: If salt-and-pepper, weight on noise L2 loss
+        no_noise_weight: If salt-and-pepper, weight on non-noise L2 loss
+        
+
+        """
         super().__init__()
         self.zdim = zdim
         self.detach_vae = detach_vae
         self.deterministic = deterministic
-        self.encoder = Encoder(zdim=zdim,channel_in=channel_in,img_height=img_height)
-        self.decoder = Decoder(zdim=zdim,channel_in=channel_in,img_height=img_height)
+        self.noise_prob = noise_prob
+        self.noise_weight, self.no_noise_weight = noise_weight, no_noise_weight
+        self.encoder = Encoder(zdim,img_shape,arch_type,hidden_dims=encoder_layers)
+        self.decoder = Decoder(zdim,img_shape,arch_type,hidden_dims=decoder_layers)
         act_fn = {
             'relu' : lambda: nn.ReLU(),
             'tanh' : lambda: nn.Tanh()
@@ -122,30 +178,42 @@ class VaePolicy(nn.Module):
         lead_dim, T, B, img_shape = infer_leading_dims(observation, 3)
         obs = observation.view(T*B, *img_shape)
         obs = obs.permute(0, 3, 1, 2).float() / 255.
+        noise_idx = None
+        if self.noise_prob:
+            obs, noise_idx = salt_and_pepper(obs,self.noise_prob)
 
         z, mu, logsd = self.encoder(obs)
         extractor_in = mu if self.deterministic else z
         reconstruction = self.decoder(extractor_in)
+        
         if self.detach_vae:
             extractor_in = extractor_in.detach()
         extractor_out = self.shared_extractor(extractor_in)
         act_dist = self.policy(extractor_out)
         value = self.value(extractor_out).squeeze(-1)
         latent = torch.cat((mu, logsd), dim=1)
+        
         act_dist, value, latent, reconstruction = restore_leading_dims((act_dist, value, latent, reconstruction), lead_dim, T, B)
-        return act_dist, value, latent, reconstruction
+        return act_dist, value, latent, reconstruction, noise_idx
 
     def loss(self, loss_type, inputs):
-        _, _, latent, reconstruction = self.forward(*inputs)
+        _, _, latent, reconstruction,noise_idx = self.forward(*inputs)
         obs = buffer_to((inputs.observation), device)
         obs = obs.permute(0, 1, 4, 2, 3).float() / 255.
         bs = obs.shape[0]* obs.shape[1]
         mu, logsd = torch.chunk(latent, 2, dim=1)
         logvar = 2*logsd
-
         kl_loss = torch.sum(-0.5*(1 + logvar - mu.pow(2) - logvar.exp())) / bs
         if loss_type == "l2":
-            recon_loss = torch.sum( (obs - reconstruction).pow(2) ) / bs
+            if noise_idx is not None:
+                obs, reconstruction = obs.reshape(bs,-1), reconstruction.reshape(bs,-1)
+                noise_idx = noise_idx.reshape(-1)
+                noise = torch.sum((obs[:,noise_idx]-reconstruction[:,noise_idx]).pow(2)) / bs
+                no_noise_idx = 1 - noise_idx
+                no_noise = torch.sum((obs[:,no_noise_idx]-reconstruction[:,no_noise_idx]).pow(2)) / bs
+                recon_loss = self.noise_weight * noise + self.no_noise_weight * no_noise
+            else:
+                recon_loss = torch.sum((obs - reconstruction).pow(2)) / bs
         elif loss_type == "bce":
             recon_loss = nn.BCELoss()(reconstruction, obs)
         else:
@@ -157,7 +225,7 @@ class VaePolicy(nn.Module):
         zs = torch.randn(n, self.zdim).to(device)
         samples = self.decoder(zs)
         obs = obs.reshape(-1, 64, 64, 3)[:10]
-        _, _, latent, reconstruction = self.forward(obs)
+        _, _, latent, reconstruction,_ = self.forward(obs)
         obs = obs.permute(0, 3, 1, 2).float().to(device) / 255.
         recon = torch.cat((obs, reconstruction),dim=0)
         save_image(torch.Tensor(samples.detach().cpu()), os.path.join(savepath, 'samples_' + str(itr) +'.png'), nrow=10)
@@ -177,37 +245,19 @@ TEST POLICY
 '''
 
 class BaselinePolicy(nn.Module):
-    def __init__(self, channel_in=3, img_height=64, shared_layers=[], 
+    def __init__(self, img_shape=(3, 64, 64), shared_layers=[], 
+                        zdim=128, arch_type=0,encoder_layers=[32, 64, 128, 256],
                         policy_layers=[64, 64, 15,], value_layers=[64, 64, 1,], act_fn='relu',):
 
         super().__init__()
 
-        self.h = img_height
-        final_dim = (self.h//8)**2
+        self.encoder =  Encoder(zdim,img_shape,arch_type,hidden_dims=encoder_layers)
         act_fn = {
             'relu' : lambda: nn.ReLU(),
             'tanh' : lambda: nn.Tanh()
         }[act_fn]
 
-        self.use_cuda = torch.cuda.is_available()
-
-        self.main = nn.Sequential(
-            nn.Conv2d(channel_in, 32, 1), # h x h
-            nn.ReLU(True),
-
-            nn.Conv2d(32, 64, 3, 2, 1), # h/2 x h/2
-            nn.ReLU(True), 
-
-            nn.Conv2d(64, 128, 3, 2, 1), # h/4 x h/4
-            nn.ReLU(True),
-
-            nn.Conv2d(128, 256, 3, 2, 1), # h/8 x h/8
-            nn.ReLU(True),
-            
-            nn.Flatten(),
-            nn.Linear(final_dim * 256, 128) # finally convert to FC.
-            )
-        last_layer = 128
+        last_layer = zdim
         shared_extractor = [act_fn()]
         for l in shared_layers:
             shared_extractor.append(nn.Linear(last_layer, l))
@@ -236,7 +286,7 @@ class BaselinePolicy(nn.Module):
         lead_dim, T, B, img_shape = infer_leading_dims(observation, 3)
         obs = observation.view(T*B, *img_shape)
         obs = obs.permute(0, 3, 1, 2).float() / 255.
-        extractor_in = self.main(obs)
+        _,extractor_in,_ = self.encoder(obs)
         extractor_out = self.shared_extractor(extractor_in)
         act_dist = self.policy(extractor_out)
         value = self.value(extractor_out).squeeze(-1)
