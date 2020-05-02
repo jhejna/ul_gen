@@ -25,9 +25,9 @@ def salt_and_pepper(img,prob):
     return noisy, np.concatenate((idxone,idxzero),axis=0)
 
 class Encoder(nn.Module):
-    def __init__(self, zdim, img_shape, arch_type, hidden_dims=[32,64,128,256]):
+    def __init__(self, zdim, img_shape, arch_type, hidden_dims=[32,64,128,256], rae=False):
         super().__init__()
-
+        self.rae = rae
         self.zdim = zdim
         in_channels, self.h, _ = img_shape
         C = (self.h // 2 ** len(hidden_dims))**2
@@ -55,15 +55,19 @@ class Encoder(nn.Module):
         self.main = nn.Sequential(*modules)
 
         self.mu = nn.Linear(hidden_dims[-1] * C, zdim)
-        self.logsd = nn.Linear(hidden_dims[-1] * C, zdim)
+        if not self.rae:
+            self.logsd = nn.Linear(hidden_dims[-1] * C, zdim)
 
     def forward(self,x):
         bs = x.shape[0]
         x = self.main(x).reshape(bs,-1)
         mu = self.mu(x)
-        logsd = self.logsd(x)
-        eps = buffer_to(Variable(torch.randn([bs, self.zdim])), x.device)
-        z = eps * logsd.exp() + mu
+        if self.rae:
+            z = mu
+        else:
+            logsd = self.logsd(x)
+            eps = buffer_to(Variable(torch.randn([bs, self.zdim])), x.device)
+            z = eps * logsd.exp() + mu
         return z, mu, logsd
 
 class Decoder(nn.Module):
@@ -127,7 +131,8 @@ class VaePolicy(nn.Module):
                         act_fn='relu', deterministic=False,
                         detach_vae=False, detach_value=False,
                         detach_policy=False, arch_type=0.,
-                        noise_prob=0.,noise_weight=1.,no_noise_weight=0.):
+                        noise_prob=0.,noise_weight=1.,no_noise_weight=0.,
+                        rae=False):
 
         """
         arch_type: 0 for Conv2d-ReLU; 1 for Conv2d-BN-LeakyReLU
@@ -139,6 +144,9 @@ class VaePolicy(nn.Module):
         """
         super().__init__()
         self.zdim = zdim
+        self.rae = rae
+        self.detach_value = detach_value
+        self.detach_policy = detach_policy
         self.detach_vae = detach_vae
         self.deterministic = deterministic
         self.noise_prob = noise_prob
@@ -189,9 +197,23 @@ class VaePolicy(nn.Module):
         if self.detach_vae:
             extractor_in = extractor_in.detach()
         extractor_out = self.shared_extractor(extractor_in)
-        act_dist = self.policy(extractor_out)
-        value = self.value(extractor_out).squeeze(-1)
-        latent = torch.cat((mu, logsd), dim=1)
+
+        if self.detach_policy:
+            policy_in = extractor_out.detach()
+        else:
+            policy_in = extractor_out
+        if self.detach_value:
+            value_in = extractor_out.detach()
+        else:
+            value_in = extractor_out
+        
+        act_dist = self.policy(policy_in)
+        value = self.value(value_in).squeeze(-1)
+
+        if self.rae:
+            latent = mu
+        else:
+            latent = torch.cat((mu, logsd), dim=1)
         
         act_dist, value, latent, reconstruction = restore_leading_dims((act_dist, value, latent, reconstruction), lead_dim, T, B)
         return act_dist, value, latent, reconstruction, noise_idx
@@ -201,9 +223,13 @@ class VaePolicy(nn.Module):
         obs = buffer_to((inputs.observation), device)
         obs = obs.permute(0, 1, 4, 2, 3).float() / 255.
         bs = obs.shape[0]* obs.shape[1]
-        mu, logsd = torch.chunk(latent, 2, dim=1)
-        logvar = 2*logsd
-        kl_loss = torch.sum(-0.5*(1 + logvar - mu.pow(2) - logvar.exp())) / bs
+
+        if self.rae:
+            latent_loss = (0.5 * latent.pow(2).sum()) / bs
+        else:
+            mu, logsd = torch.chunk(latent, 2, dim=1)
+            logvar = 2*logsd
+            latent_loss = torch.sum(-0.5*(1 + logvar - mu.pow(2) - logvar.exp())) / bs
         if loss_type == "l2":
             if noise_idx is not None:
                 obs, reconstruction = obs.reshape(bs,-1), reconstruction.reshape(bs,-1)
@@ -218,7 +244,7 @@ class VaePolicy(nn.Module):
             recon_loss = nn.BCELoss()(reconstruction, obs)
         else:
             raise NotImplementedError
-        return recon_loss, kl_loss
+        return recon_loss, latent_loss
 
     def log_images(self, obs, savepath, itr,n=100):
         self.eval()
