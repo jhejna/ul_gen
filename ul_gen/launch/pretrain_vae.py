@@ -13,7 +13,7 @@ from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 
 from ul_gen.configs.ppo_vae_procgen_config import configs
 from ul_gen.models.vae import VaePolicy
-
+import json
 import argparse
 
 parser = argparse.ArgumentParser()

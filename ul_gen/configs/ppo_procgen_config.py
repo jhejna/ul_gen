@@ -6,20 +6,21 @@ config = dict(
     agent=dict(),
     algo=dict(
         discount=0.999,
-        learning_rate=8e-4,
+        learning_rate=3e-4,
         value_loss_coeff=0.5,
         entropy_loss_coeff=0.01,
         clip_grad_norm=1.,
         gae_lambda=0.95,
-        linear_lr_schedule=True,
-        minibatches=8,
+        linear_lr_schedule=False,
+        minibatches=64,
         epochs=3,
         ratio_clip=.2,
         normalize_advantage=True,
+
     ),
     env={
         "id": "procgen:procgen-coinrun-v0",
-        "num_levels": 500,
+        "num_levels": 1000,
         "start_level": 0,
         "distribution_mode": "easy"
     },
@@ -30,7 +31,7 @@ config = dict(
         "distribution_mode": "easy"
     },
     model=dict(
-        img_height=64,
+        img_shape=(3,64,64),
         policy_layers=[15],
         value_layers=[1]
     ),
