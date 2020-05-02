@@ -183,8 +183,8 @@ class VaePolicy(nn.Module):
             obs, noise_idx = salt_and_pepper(obs,self.noise_prob)
 
         z, mu, logsd = self.encoder(obs)
+        reconstruction = self.decoder(z)
         extractor_in = mu if self.deterministic else z
-        reconstruction = self.decoder(extractor_in)
         
         if self.detach_vae:
             extractor_in = extractor_in.detach()
