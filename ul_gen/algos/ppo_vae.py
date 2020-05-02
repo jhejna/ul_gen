@@ -21,7 +21,7 @@ class PPO_VAE(PolicyGradientAlgo):
     each iteration, with advantages computed by generalized advantage
     estimation.  Uses clipped likelihood ratios in the policy loss.
     """
-
+    
     def __init__(
             self,
             discount=0.99,
@@ -174,10 +174,14 @@ class PPO_VAE(PolicyGradientAlgo):
         obs = obs.permute(0, 3, 1, 2).float() / 255.
 
         bs = obs.shape[0]
-        mu, logsd = torch.chunk(latent, 2, dim=1)
-        logvar = 2*logsd
 
-        kl_loss = torch.sum(-0.5*(1 + logvar - mu.pow(2) - logvar.exp())) / bs
+        if self.agent.model.rae:
+            latent_loss = (0.5 * latent.pow(2).sum()) / bs
+        else:
+            mu, logsd = torch.chunk(latent, 2, dim=1)
+            logvar = 2*logsd
+            latent_loss = torch.sum(-0.5*(1 + logvar - mu.pow(2) - logvar.exp())) / bs
+
         if self.vae_loss_type == "l2":
             if self.agent.model.noise_prob:
                 obs, reconstruction = obs.reshape(bs,-1), reconstruction.reshape(bs,-1)
@@ -195,7 +199,7 @@ class PPO_VAE(PolicyGradientAlgo):
             raise NotImplementedError
         
         
-        vae_loss = self.vae_loss_coeff * (recon_loss + self.vae_beta * kl_loss)
+        vae_loss = self.vae_loss_coeff * (recon_loss + self.vae_beta * latent_loss)
 
         policy_loss = pi_loss + value_loss + entropy_loss # + self.vae_loss_coeff * vae_loss
         
