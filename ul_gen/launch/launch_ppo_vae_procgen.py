@@ -28,7 +28,7 @@ variants, log_dirs = make_variants(*variant_levels)
 print("Variants", variants)
 print("Log_dirs", log_dirs)
 
-script = os.getcwd() + "/ul_gen/launch/train_ppo_vae_procgen.py"
+script = os.getcwd() + "/launch/train_ppo_vae_procgen.py"
 experiment_title = "ppo_vae_procgen"
 default_config_key = "ppo_vae"
 

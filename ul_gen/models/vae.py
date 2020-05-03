@@ -151,7 +151,7 @@ class VaePolicy(nn.Module):
         self.deterministic = deterministic
         self.noise_prob = noise_prob
         self.noise_weight, self.no_noise_weight = noise_weight, no_noise_weight
-        self.encoder = Encoder(zdim,img_shape,arch_type,hidden_dims=encoder_layers)
+        self.encoder = Encoder(zdim,img_shape,arch_type,hidden_dims=encoder_layers, rae=rae)
         self.decoder = Decoder(zdim,img_shape,arch_type,hidden_dims=decoder_layers)
         act_fn = {
             'relu' : lambda: nn.ReLU(),
@@ -241,7 +241,7 @@ class VaePolicy(nn.Module):
             else:
                 recon_loss = torch.sum((obs - reconstruction).pow(2)) / bs
         elif loss_type == "bce":
-            recon_loss = nn.BCELoss()(reconstruction, obs)
+            recon_loss = nn.BCELoss()(reconstruction, obs)*100
         else:
             raise NotImplementedError
         return recon_loss, latent_loss

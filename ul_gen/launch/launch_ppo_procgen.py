@@ -1,4 +1,4 @@
-
+import os
 from rlpyt.utils.launching.affinity import encode_affinity
 from rlpyt.utils.launching.exp_launcher import run_experiments
 from rlpyt.utils.launching.variant import make_variants, VariantLevel
@@ -26,7 +26,7 @@ variants, log_dirs = make_variants(*variant_levels)
 print("Variants", variants)
 print("Log_dirs", log_dirs)
 
-script = "launch/train_ppo_procgen.py"
+script = os.getcwd() + "/ul_gen/launch/train_ppo_procgen.py"
 experiment_title = "ppo_procgen"
 default_config_key = "ppo"
 

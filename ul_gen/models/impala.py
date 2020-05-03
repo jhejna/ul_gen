@@ -41,7 +41,7 @@ class Impala_CNN(nn.Module):
 			self.layers.append(self.conv_sequence(last_filter, f))
 			last_filter = f
 		self.layers = nn.Sequential(*self.layers)
-		self.linear = nn.Linear(filters[-1]*8*8, cnn_output)
+		self.linear = nn.Linear(filters[-1]*8*8, cnn_output) # Hard coded final dimension
 
 	def forward(self, x):
 		out = self.layers(x)
@@ -53,10 +53,10 @@ class Impala_CNN(nn.Module):
 
 class ProcgenPPOModel(nn.Module):
 
-	def __init__(self, cnn_extractor=Impala_CNN, cnn_filters=[32, 64, 64], cnn_output=256, \
+	def __init__(self, channel_in=3, cnn_extractor=Impala_CNN, cnn_filters=[32, 64, 64], cnn_output=256, \
 				policy_layers=[15], value_layers=[1],):
 		super().__init__()
-		self.cnn = cnn_extractor(3, cnn_filters, cnn_output)
+		self.cnn = cnn_extractor(channel_in, cnn_filters, cnn_output)
 		policy = []
 		value = []
 		last_layer = cnn_output
@@ -65,7 +65,7 @@ class ProcgenPPOModel(nn.Module):
 			policy.append(nn.ReLU())
 			last_layer = l
 		policy.pop()
-		policy.append(nn.Softmax(dim=1))
+		policy.append(nn.Softmax(dim=-1))
 		last_layer = cnn_output
 		for l in value_layers:
 			value.append(nn.Linear(last_layer, l))
@@ -81,6 +81,6 @@ class ProcgenPPOModel(nn.Module):
 		obs = obs.permute(0, 3, 1, 2).float() / 255.
 		features = self.cnn(obs)
 		policy = self.policy(features)
-		value = self.value(features)
+		value = self.value(features).squeeze(-1)
 		policy, value = restore_leading_dims((policy, value), lead_dim, T, B)
-		return policy, value.squeeze(-1)
+		return policy, value
