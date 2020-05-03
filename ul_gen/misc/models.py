@@ -4,7 +4,6 @@ import torch.nn.functional as F
 import numpy as np
 from torch.autograd import Variable
 
-from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 
 class Encoder(nn.Module):
 	def __init__(self,zdim,channel_in,img_height):
