@@ -1,11 +1,16 @@
 configs = dict()
 
 config = dict(
-    checkpoint='/home/karam/Downloads/ul_gen/vae_data/experiment/vae',
+    checkpoint='/home/karam/Downloads/ul_gen/vae_data/snp.25_hard_coin/vae',
+    override=dict(
+        override_policy_value=True, 
+        policy_layers=[64,64,15],
+        value_layers=[64,64,1]),
     agent=dict(),
     algo=dict(
         discount=0.999,
-        learning_rate=3e-4,
+        learning_rate=3e-4,        
+        value_loss_coeff=1.,
         entropy_loss_coeff=0.01,
         clip_grad_norm=1.,
         gae_lambda=0.95,
@@ -25,25 +30,28 @@ config = dict(
         "id": "procgen:procgen-coinrun-v0",
         "num_levels": 1000,
         "start_level": 0,
-        "distribution_mode": "easy"
+        "distribution_mode": "hard"
     },
     eval_env={
         "id": "procgen:procgen-coinrun-v0",
         "num_levels": 100,
         "start_level": 1000,
-        "distribution_mode": "easy"
+        "distribution_mode": "hard"
     },
     model=dict(
-        zdim=300,
+        zdim=256,
         img_shape=(3,64,64),
+        detach_policy=False,
         detach_vae=True,
+        detach_value=False,
         deterministic=True,
-        policy_layers=[15],
-        value_layers=[1],
+        policy_layers=[64,64,15],
+        value_layers=[64,64,1],
         noise_prob=.25,        
         noise_weight=1.,
         no_noise_weight=.25,
-        arch_type=0
+        arch_type=0,
+        rae=False
     ),
     optim=dict(),
     runner=dict(
@@ -53,8 +61,6 @@ config = dict(
     sampler=dict(
         batch_T=256,
         batch_B=16,
-        # batch_T=32,
-        # batch_B=4,
         eval_n_envs=8,
         eval_max_steps=20000,
         eval_max_trajectories=100,
@@ -67,7 +73,7 @@ pretrain_config = dict(
         "id": "procgen:procgen-coinrun-v0",
         "num_levels": 1000,
         "start_level": 0,
-        "distribution_mode": "easy"
+        "distribution_mode": "hard"
     },
     sampler=dict(
         batch_T=24,
@@ -78,19 +84,19 @@ pretrain_config = dict(
     ),
     algo=dict(
         vae_beta=1,
-        loss = "bce"
+        loss = "l2"
     ),
     optim=dict(
         lr=1e-4
     ),
     model=dict(
-        zdim=150,
+        zdim=256,
         img_shape=(3,64,64),
         detach_vae=False,
         deterministic=False,
         policy_layers=[64,64,15],
         value_layers=[64,64,1],
-        noise_prob=0.,
+        noise_prob=0.25,
         noise_weight=1.,
         no_noise_weight=.25,
         arch_type=0,

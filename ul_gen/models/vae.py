@@ -182,6 +182,27 @@ class VaePolicy(nn.Module):
         self.policy = nn.Sequential(*policy)
         self.value = nn.Sequential(*value)
 
+    def override_policy_value(self,policy_layers=[64, 64, 15,], value_layers=[64, 64, 1,]):
+        """ hack: if vae was pretrained with different policy, value networks, can reinit
+        assumes shared_extractor is []"""
+        policy = []
+        last_layer = self.zdim
+        for l in policy_layers:
+            policy.append(nn.Linear(last_layer, l))
+            policy.append(nn.ReLU())
+            last_layer = l
+        policy.pop()
+        policy.append(nn.Softmax(dim=-1))
+        value = []
+        last_layer = self.zdim
+        for l in value_layers:
+            value.append(nn.Linear(last_layer, l))
+            value.append(nn.ReLU())
+            last_layer = l
+        value.pop()
+        self.policy = nn.Sequential(*policy)
+        self.value = nn.Sequential(*value)
+
     def forward(self, observation, prev_action=None, prev_reward=None):
         lead_dim, T, B, img_shape = infer_leading_dims(observation, 3)
         obs = observation.view(T*B, *img_shape)
@@ -193,7 +214,7 @@ class VaePolicy(nn.Module):
         z, mu, logsd = self.encoder(obs)
         reconstruction = self.decoder(z)
         extractor_in = mu if self.deterministic else z
-        
+
         if self.detach_vae:
             extractor_in = extractor_in.detach()
         extractor_out = self.shared_extractor(extractor_in)
@@ -273,11 +294,13 @@ TEST POLICY
 class BaselinePolicy(nn.Module):
     def __init__(self, img_shape=(3, 64, 64), shared_layers=[], 
                         zdim=128, arch_type=0,encoder_layers=[32, 64, 128, 256],
-                        policy_layers=[64, 64, 15,], value_layers=[64, 64, 1,], act_fn='relu',):
+                        policy_layers=[64, 64, 15,], value_layers=[64, 64, 1,], act_fn='relu',
+                        noise_prob=0):
 
         super().__init__()
 
         self.encoder =  Encoder(zdim,img_shape,arch_type,hidden_dims=encoder_layers)
+        self.noise_prob=noise_prob
         act_fn = {
             'relu' : lambda: nn.ReLU(),
             'tanh' : lambda: nn.Tanh()
@@ -312,6 +335,8 @@ class BaselinePolicy(nn.Module):
         lead_dim, T, B, img_shape = infer_leading_dims(observation, 3)
         obs = observation.view(T*B, *img_shape)
         obs = obs.permute(0, 3, 1, 2).float() / 255.
+        if self.noise_prob:
+            obs, noise_idx = salt_and_pepper(obs,self.noise_prob)
         _,extractor_in,_ = self.encoder(obs)
         extractor_out = self.shared_extractor(extractor_in)
         act_dist = self.policy(extractor_out)

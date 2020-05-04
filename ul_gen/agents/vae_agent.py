@@ -15,6 +15,10 @@ class CategoricalPgVaeAgent(BaseAgent):
     (model here outputs discrete probabilities in place of means and log_stds,
     while both output the value estimate).
     """
+    def __init__(self,ModelCls,override,
+        model_kwargs, initial_model_state_dict, **agent_config):
+        super().__init__(ModelCls,model_kwargs,initial_model_state_dict,**agent_config)
+        self.override=override
 
     def __call__(self, observation, prev_action, prev_reward):
         prev_action = self.distribution.to_onehot(prev_action)
@@ -27,6 +31,11 @@ class CategoricalPgVaeAgent(BaseAgent):
             global_B=1, env_ranks=None):
         super().initialize(env_spaces, share_memory,
             global_B=global_B, env_ranks=env_ranks)
+        if self.override['override_policy_value']:
+            policy_layers=self.override["policy_layers"]
+            value_layers=self.override["value_layers"]
+            self.model.override_policy_value(policy_layers=policy_layers,
+                value_layers=value_layers)
         self.distribution = Categorical(dim=env_spaces.action.n)
 
     @torch.no_grad()

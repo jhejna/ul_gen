@@ -22,18 +22,21 @@ config = dict(
         "id": "procgen:procgen-coinrun-v0",
         "num_levels": 1000,
         "start_level": 0,
-        "distribution_mode": "easy"
+        "distribution_mode": "hard"
     },
     eval_env={
         "id": "procgen:procgen-coinrun-v0",
         "num_levels": 100,
         "start_level": 1000,
-        "distribution_mode": "easy"
+        "distribution_mode": "hard"
     },
     model=dict(
         img_shape=(3,64,64),
-        policy_layers=[15],
-        value_layers=[1]
+        policy_layers=[64,64,15],
+        value_layers=[64,64,1],
+        zdim=256,
+        noise_prob=.0,        
+        arch_type=0,
     ),
     optim=dict(),
     runner=dict(

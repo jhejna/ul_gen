@@ -47,8 +47,9 @@ def build_and_train(slot_affinity_code, log_dir, run_ID, config_key):
         model_state_dict = None
 
     algo = PPO_VAE(optim_kwargs=config["optim"], **config["algo"])
-    agent = CategoricalPgVaeAgent(ModelCls=VaePolicy, 
+    agent = CategoricalPgVaeAgent(ModelCls=VaePolicy,override=config["override"],
         model_kwargs=config["model"], initial_model_state_dict=model_state_dict, **config["agent"])
+
     runner = MinibatchRlEvalVAE(
         algo=algo,
         agent=agent,
