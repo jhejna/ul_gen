@@ -93,8 +93,7 @@ class RADPgAgent(BaseAgent):
     @torch.no_grad()
     def step(self, observation, prev_action, prev_reward):
         prev_action = self.distribution.to_onehot(prev_action)
-        observation = observation.type(torch.float)  # Expect torch.uint8 inputs
-        observation = observation.mul_(1. / 255)  # From [0-255] to [0-1], in place.
+        observation = self.aug_obs(observation)
         model_inputs = buffer_to((observation, prev_action, prev_reward),
             device=self.device)
         pi, value = self.model(*model_inputs)
@@ -107,8 +106,7 @@ class RADPgAgent(BaseAgent):
     @torch.no_grad()
     def value(self, observation, prev_action, prev_reward):
         prev_action = self.distribution.to_onehot(prev_action)
-        observation = observation.type(torch.float)  # Expect torch.uint8 inputs
-        observation = observation.mul_(1. / 255)  # From [0-255] to [0-1], in place.
+        observation = self.aug_obs(observation)
         model_inputs = buffer_to((observation, prev_action, prev_reward),
             device=self.device)
         _pi, value = self.model(*model_inputs)
