@@ -5,19 +5,20 @@ params = {
     "img_channels": 1,
     "batch_size": 96,
     "lr": 1e-4,
-    "sim_loss_coef": 1.0,
+    "sim_loss_coef": 0.0,
     "z_dim": 16,
     "k_dim": 12,
     "beta": 1.1,
     "epochs" : 60,
     "save_freq": 10,
-    "savepath": "mnist_aug_vae",
+    "savepath": "mnist_vae_new",
     "dataset": "mnist",
-    "final_act" : "tanh",
+    "final_act" : "sigmoid",
+    "loss_type" : "l2", 
     "dataset_args": {
         "output_size": 48,
         "resize": (0.7, 1.1),
-        "rotate": (-75, 75),
+        "rotate": (-45, 45),
     }
 }
 

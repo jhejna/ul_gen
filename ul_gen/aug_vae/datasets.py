@@ -36,8 +36,8 @@ class MnistAug(object):
 
     def __call__(self, sample):
         aug = sample.copy()
-        orig = 2*to_tensor(self.aug_img(sample)) - 1
-        aug = 2*to_tensor(self.aug_img(aug)) - 1
+        orig = to_tensor(self.aug_img(sample))
+        aug = to_tensor(self.aug_img(aug))
 
         return {'orig': orig, 'aug': aug}
 

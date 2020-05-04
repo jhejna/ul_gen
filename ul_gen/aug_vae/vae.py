@@ -41,8 +41,10 @@ class VAE(torch.nn.Module):
                                             # PrintNode("Enc Conv4"),
                                             torch.nn.ReLU(),
                                             torch.nn.Flatten(),
+                                            torch.nn.Linear(final_feature_dim*final_feature_dim*64, 256),
+                                            torch.nn.ReLU(),
                                             # PrintNode("Flattened Enc"),
-                                            torch.nn.Linear(final_feature_dim*final_feature_dim*64, 2*self.z_dim),
+                                            torch.nn.Linear(256, 2*self.z_dim),
                                             # PrintNode("Enc Z Out"),
                                             )
         

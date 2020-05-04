@@ -32,7 +32,7 @@ def train(params):
     with open(os.path.join(savepath, 'params.json'), 'w') as fp:
         json.dump(params, fp)
 
-    model = VAE(img_dim=params["img_dim"], img_channels=params["img_channels"], z_dim=params["z_dim"]).to(device)
+    model = VAE(img_dim=params["img_dim"], img_channels=params["img_channels"], z_dim=params["z_dim"], final_act=params["final_act"]).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=params['lr'])
 
     z_dim = params["z_dim"]
@@ -41,15 +41,23 @@ def train(params):
     img_dim = params["img_dim"]
     img_channels = params["img_channels"]
     sim_loss_coef = params["sim_loss_coef"]
+    loss_type = params["loss_type"]
 
     for epoch in range(params["epochs"]):
         for batch, _ in loader:
             optimizer.zero_grad()
             # Concatenate to feed all the data through
             x = torch.cat((batch['orig'], batch['aug']), dim=0).to(device)
+            if params["final_act"] == "tanh":
+                x = 2*x - 1
             x_hat, mu, log_var = model(x)
             kl_loss = torch.sum(-0.5*(1 + log_var - mu.pow(2) - log_var.exp())) / len(x) # Divide by batch size
-            recon_loss = torch.sum((x - x_hat).pow(2)) / len(x)
+            
+            if loss_type == "l2":
+                recon_loss = torch.sum((x - x_hat).pow(2)) / len(x)
+            elif loss_type == "bce":
+                recon_loss = torch.nn.functional.binary_cross_entropy(x_hat, x)
+            
             # Compute the similarity loss
             if params["sim_loss_coef"] > 0:
                 mu_orig, mu_aug = torch.chunk(mu, 2, dim=0)
@@ -76,12 +84,14 @@ def train(params):
             # Save reconstructions and samples:
             model.eval()
             recon = torch.cat((x[:8], x_hat[:8]),dim=0) 
-            recon = (recon + 1)/2
+            if params["final_act"] == "tanh":
+                recon = (recon + 1)/2
             save_image(recon.detach().cpu(), os.path.join(savepath, 'recon_' + str(epoch+1) +'.png'), nrow=8)
 
             zs = torch.randn(16, z_dim).to(device)
             samples = model.decoder(zs)
-            samples = (samples + 1)/2
+            if params["final_act"] == "tanh":
+                samples = (samples + 1)/2
             save_image(samples.detach().cpu(), os.path.join(savepath, 'samples_' + str(epoch+1) +'.png'), nrow=8)
             
             # Prep For Interpolations
@@ -103,8 +113,8 @@ def train(params):
                 for j in range(n_interp):
                     out_interp[10*j + i, :, :, :] = interpolations[i][j, :, :, :]
             if params["final_act"] == "tanh":
-                interpolations = (out_interp + 1)/2
-            save_image(interpolations.detach().cpu(), os.path.join(savepath, 'interp_reg_' + str(epoch+1) +'.png'), nrow=10)
+                out_interp = (out_interp + 1)/2
+            save_image(out_interp.detach().cpu(), os.path.join(savepath, 'interp_reg_' + str(epoch+1) +'.png'), nrow=10)
 
             # Aug Interpolations
             diff_vec = z_aug - z_orig
@@ -119,8 +129,8 @@ def train(params):
                 for j in range(n_interp):
                     out_interp[10*j + i, :, :, :] = interpolations[i][j, :, :, :]
             if params["final_act"] == "tanh":
-                interpolations = (out_interp + 1)/2
-            save_image(interpolations.detach().cpu(), os.path.join(savepath, 'interp_aug_' + str(epoch+1) +'.png'), nrow=10)
+                out_interp = (out_interp + 1)/2
+            save_image(out_interp.detach().cpu(), os.path.join(savepath, 'interp_aug_' + str(epoch+1) +'.png'), nrow=10)
 
             # Set the first k components of diff vec to be zero, so we only vary along aug components
             diff_vec = z_aug - z_orig
@@ -136,8 +146,9 @@ def train(params):
             for i in range(10):
                 for j in range(n_interp):
                     out_interp[10*j + i, :, :, :] = interpolations[i][j, :, :, :]
-            interpolations = (out_interp + 1)/2
-            save_image(interpolations.detach().cpu(), os.path.join(savepath, 'interp_topk_' + str(epoch+1) +'.png'), nrow=10)
+            if params["final_act"] == "tanh":
+                out_interp = (out_interp + 1)/2
+            save_image(out_interp.detach().cpu(), os.path.join(savepath, 'interp_topk_' + str(epoch+1) +'.png'), nrow=10)
                 
             torch.save(model.state_dict(), '%s/aug-vae-%d' % (savepath, epoch+1))
             model.train()
