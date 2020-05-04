@@ -2,6 +2,8 @@
 ul_gen/tf/data/
 ul_gen/aug_vae/data
 ul_gen/aug_vae/output
+ul_gen/data/
+ul_gen/vae_data/
 
 # virtual environments
 venv/

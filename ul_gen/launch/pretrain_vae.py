@@ -105,6 +105,6 @@ for itr in range(config["train_steps"]):
         print("Iteration", itr+1, "Evaluating.")
         model.log_images(inputs.observation, args.savepath, itr) 
 
-torch.save(model.state_dict(), '%s/vae-final' % (args.savepath))
+torch.save(model.state_dict(), f'{args.savepath}/vae-final')
 print("Training complete.")
 sampler.shutdown()
