@@ -10,6 +10,8 @@ from rlpyt.utils.buffer import buffer_to
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 
+from torchvision.utils import save_image
+
 from ul_gen.rad.ppo_aug_vae_config import configs
 from ul_gen.rad.rad_agent import RADPgVaeAgent
 from ul_gen.rad.aug_vae import RadVaePolicy
@@ -17,7 +19,7 @@ from ul_gen.rad.env_wrapper import make
 
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument("--savepath",type=str,default="./aug_vae_data/")
+parser.add_argument("--savepath",type=str,default="./raug_vae_data/")
 
 args = parser.parse_args()
 
@@ -28,7 +30,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 affinity_code = encode_affinity(
     n_cpu_core=4,
-    n_gpu=0,
+    n_gpu=1,
     n_socket=1,
 )
 
@@ -71,15 +73,18 @@ for itr in range(10000):
     loss.backward()
     optimizer.step()
 
-    if (itr + 1) % 1000 == 0:
+    if (itr + 1) % 100 == 0:
         print("Iteration", itr+1, "Loss", loss.item())
+
+    if (itr + 1) % 1000 == 0:
+        print("Saving.")
         # Save reconstructions
         x_hat = agent.reconstructions(*agent_inputs)
-        x = agent_inputs.observation.detach().cpu()
+        x = agent_inputs.observation.detach().cpu().float() / 255.
 
         reconstructions = torch.cat((x[:8], x_hat[:8]),dim=0) 
         save_image(reconstructions, os.path.join(args.savepath, 'recon_' + str(itr+1) +'.png'), nrow=8)
-        torch.save(model.state_dict(), '%s/ae-aug_vae_data-%d' % (args.savepath, int(itr+1)))
+        torch.save(agent.model.state_dict(), '%s/ae-aug_vae_data-%d' % (args.savepath, int(itr+1)))
 
 print("Training complete.")
 sampler.shutdown()

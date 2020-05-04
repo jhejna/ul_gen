@@ -262,6 +262,9 @@ class RADPgVaeAgent(BaseAgent):
 
     @torch.no_grad()
     def reconstructions(self, observation, prev_action, prev_reward):
+        prev_action = self.distribution.to_onehot(prev_action)
+        observation = observation.type(torch.float)
+        observation = observation.mul_(1. / 255)
         model_inputs = buffer_to((observation, prev_action, prev_reward),
             device=self.device)
         _pi, _value, _latent, reconstruction = self.model(*model_inputs)
