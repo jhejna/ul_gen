@@ -14,7 +14,7 @@ params = {
     "savepath": "mnist_vae_new",
     "dataset": "mnist",
     "final_act" : "sigmoid",
-    "loss_type" : "l2", 
+    "loss_type" : "bce", 
     "dataset_args": {
         "output_size": 48,
         "resize": (0.7, 1.1),
