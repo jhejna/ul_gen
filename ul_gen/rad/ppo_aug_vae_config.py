@@ -1,7 +1,7 @@
 configs = dict()
 
 config = dict(
-    checkpoint=None,
+    checkpoint="raug_vae_data/ae-aug_vae_data-3000",
     override=dict(
         override_policy_value=True, 
         policy_layers=[64,64,15],
@@ -13,7 +13,7 @@ config = dict(
                 data_augs="crop_horiz"),
     algo=dict(
         discount=0.999,
-        learning_rate=5e-4,        
+        learning_rate=3e-4,        
         value_loss_coeff=1.,
         entropy_loss_coeff=0.01,
         clip_grad_norm=1.,
@@ -46,7 +46,7 @@ config = dict(
     ),
     optim=dict(),
     runner=dict(
-        n_steps=5e6,
+        n_steps=10e6,
         log_interval_steps=1e5,
     ),
     sampler=dict(

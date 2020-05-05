@@ -56,7 +56,7 @@ def train(params):
             if loss_type == "l2":
                 recon_loss = torch.sum((x - x_hat).pow(2)) / len(x)
             elif loss_type == "bce":
-                recon_loss = torch.nn.functional.binary_cross_entropy(x_hat, x)
+                recon_loss = torch.nn.functional.binary_cross_entropy(x_hat, x, reduction='sum') / len(x)
             
             # Compute the similarity loss
             if params["sim_loss_coef"] > 0:
