@@ -62,7 +62,7 @@ def preprocess_chairs():
                 load_path = os.path.join(class_path, img_file)
                 save_path = os.path.join(dest_path, "chair" + str(chair_index), img_file)
                 im = Image.open(load_path)
-                im = im.crop(box=(160, 160, 460, 460))
+                im = im.crop(box=(60, 60, 540, 540))
                 im = im.resize((64, 64), resample=Image.BILINEAR)
                 im.save(save_path)
             print("Completed Chair", chair_index)

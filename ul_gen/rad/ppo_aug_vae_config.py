@@ -3,18 +3,17 @@ configs = dict()
 config = dict(
     checkpoint="raug_vae_data/ae-aug_vae_data-3000",
     override=dict(
-        override_policy_value=True, 
         policy_layers=[64,64,15],
         value_layers=[64,64,1]),
     agent=dict(vae_loss_type="l2",
-                vae_beta=1.0,
+                vae_beta=0.5,
                 sim_loss_coef=0.25,
                 k_dim=96,
-                data_augs="crop_horiz"),
+                data_augs="crop"),
     algo=dict(
         discount=0.999,
         learning_rate=3e-4,        
-        value_loss_coeff=1.,
+        value_loss_coeff=0.5,
         entropy_loss_coeff=0.01,
         clip_grad_norm=1.,
         gae_lambda=0.95,
@@ -25,7 +24,7 @@ config = dict(
         normalize_advantage=True,
     ),
     env={
-        "id": "procgen:procgen-fruitbot-v0",
+        "id": "procgen:procgen-bigfish-v0",
         "num_levels": 200,
         "start_level": 0,
         "distribution_mode": "easy"
@@ -33,7 +32,7 @@ config = dict(
     model=dict(
         zdim=128,
         img_shape=(3,64,64),
-        detach_policy=False,
+        detach_policy=True,
         detach_vae=True,
         detach_value=False,
         deterministic=True,

@@ -154,7 +154,7 @@ class PPO_AUG_VAE(PolicyGradientAlgo):
         
         policy_loss = pi_loss + value_loss + entropy_loss
         
-        loss = policy_loss + self.vae_loss_coeff*vae_loss
+        loss = policy_loss + self.vae_loss_coeff * vae_loss
 
         perplexity = dist.mean_perplexity(dist_info, valid)
         return loss, entropy, perplexity

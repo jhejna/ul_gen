@@ -160,7 +160,7 @@ class RadVaePolicy(nn.Module):
         z, mu, logsd = self.encoder(obs)
         reconstruction = self.decoder(z)
         extractor_in = mu if self.deterministic else z
-
+        
         if self.detach_vae:
             extractor_in = extractor_in.detach()
         extractor_out = self.shared_extractor(extractor_in)

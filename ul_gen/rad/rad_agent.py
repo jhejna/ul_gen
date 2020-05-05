@@ -192,21 +192,22 @@ class RADPgVaeAgent(BaseAgent):
         mu_one, logsd_one = torch.chunk(latent_one, 2, dim=1)
         mu_two, logsd_two = torch.chunk(latent_two, 2, dim=1)
 
-        latent_loss_one = torch.sum(-0.5*(1 + (2*logsd_one) - mu_one.pow(2) - (2*logsd_one).exp())) / bs
-        latent_loss_two = torch.sum(-0.5*(1 + (2*logsd_two) - mu_two.pow(2) - (2*logsd_two).exp())) / bs
-        latent_loss = latent_loss_one + latent_loss_two
+        latent_loss_one = torch.sum(-0.5*(1 + (2*logsd_one) - mu_one.pow(2) - (2*logsd_one).exp()))
+        latent_loss_two = torch.sum(-0.5*(1 + (2*logsd_two) - mu_two.pow(2) - (2*logsd_two).exp()))
+        latent_loss = (latent_loss_one + latent_loss_two) / bs
 
         mu_one, mu_two = mu_one[:, :self.k_dim], mu_two[:, :self.k_dim]
         logvar_one, logvar_two = 2*logsd_one[:, :self.k_dim], 2*logsd_two[:, :self.k_dim]
         # KL divergence between original and augmented.
         sim_loss = torch.sum(logvar_two - logvar_one + 0.5*(logvar_one.exp() + (mu_one - mu_two).pow(2))/logvar_two.exp() - 0.5)/ (bs // 2)
-
+        
         vae_loss = recon_loss + self.vae_beta * latent_loss + self.sim_loss_coef * sim_loss
 
-        # Average the value estimate for better POWER!!!
+        # Average estimates for better power
         value_est = (value_one + value_two) / 2
+        pi_est = (pi_one + pi_two) / 2
 
-        return buffer_to((DistInfo(prob=pi_one), value_est, vae_loss), device="cpu")
+        return buffer_to((DistInfo(prob=pi_est), value_est, vae_loss), device="cpu")
 
     def initialize(self, env_spaces, share_memory=False,
             global_B=1, env_ranks=None):
