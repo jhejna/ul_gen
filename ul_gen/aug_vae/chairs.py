@@ -13,7 +13,8 @@ params = {
     "save_freq": 10,
     "savepath": "chairs_aug_vae",
     "dataset": "chairs",
-    "final_act" : "tanh",
+    "final_act" : "sigmoid",
+    "loss_type" : "bce", 
     "dataset_args": {}
 }
 

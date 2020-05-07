@@ -36,8 +36,8 @@ class MnistAug(object):
 
     def __call__(self, sample):
         aug = sample.copy()
-        orig = 2*to_tensor(self.aug_img(sample)) - 1
-        aug = 2*to_tensor(self.aug_img(aug)) - 1
+        orig = to_tensor(self.aug_img(sample))
+        aug = to_tensor(self.aug_img(aug))
 
         return {'orig': orig, 'aug': aug}
 
@@ -62,7 +62,7 @@ def preprocess_chairs():
                 load_path = os.path.join(class_path, img_file)
                 save_path = os.path.join(dest_path, "chair" + str(chair_index), img_file)
                 im = Image.open(load_path)
-                im = im.crop(box=(160, 160, 460, 460))
+                im = im.crop(box=(60, 60, 540, 540))
                 im = im.resize((64, 64), resample=Image.BILINEAR)
                 im.save(save_path)
             print("Completed Chair", chair_index)
