@@ -82,12 +82,12 @@ if config["load_path"]:
     model.load_state_dict(torch.load(config["load_path"]))
 # Setup the optimizers
 lr=config["optim"]["lr"]
-d_optimizer = torch.optim.Adam(model.d.parameters(), lr=lr, betas=(0.5, 0.999), weight_decay=0)#2.5e-5)
-g_optimizer = torch.optim.Adam(list(model.e.parameters()) + list(model.g.parameters()), lr=lr, betas=(0.5, 0.999), weight_decay=0)#2.5e-5)
+d_optimizer = torch.optim.Adam(model.d.parameters(), lr=lr, betas=(0.5, 0.999), weight_decay=2.5e-5)
+g_optimizer = torch.optim.Adam(list(model.e.parameters()) + list(model.g.parameters()), lr=lr, betas=(0.5, 0.999), weight_decay=2.5e-5)
 g_scheduler = torch.optim.lr_scheduler.LambdaLR(g_optimizer,
                                                      lambda epoch: (steps - epoch) / steps,
                                                      last_epoch=-1)
-d_optimizer = torch.optim.Adam(model.d.parameters(), lr=lr, betas=(0., 0.9))
+d_optimizer = torch.optim.Adam(model.d.parameters(), lr=lr, betas=(0., 0.9), weight_decay=2.5e-5)
 d_scheduler = torch.optim.lr_scheduler.LambdaLR(d_optimizer,
                                                              lambda epoch: (steps - epoch) / steps,
                                                              last_epoch=-1)

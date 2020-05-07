@@ -18,9 +18,9 @@ class Generator(nn.Module):
         self.lin = nn.Linear(z_dim, C * hidden_dims[0] )        
         self.main = nn.Sequential(
             # input dim: z_dim x 1 x 1
-            nn.ConvTranspose2d(256, 256, 1, 1),
-            nn.BatchNorm2d(256),
-            nn.LeakyReLU(self.slope, inplace=True),
+            # nn.ConvTranspose2d(256, 256, 1, 1),
+            # nn.BatchNorm2d(256),
+            # nn.LeakyReLU(self.slope, inplace=True),
 
             nn.ConvTranspose2d(256, 128, 4, 2, 1),
             nn.BatchNorm2d(128),
@@ -51,7 +51,7 @@ class Generator(nn.Module):
 class Discriminator(nn.Module):
     def __init__(self, zdim, img_shape=(3,64,64), hidden_dims=[256,128,64,32], ):
         super(Discriminator, self).__init__()
-        p=0
+        p=.5
         in_channels,self.h,_ = img_shape
         C = (self.h // 2 ** len(hidden_dims))**2
         odim = self.h*self.h*in_channels
@@ -74,11 +74,11 @@ class Discriminator(nn.Module):
             nn.Dropout2d(p),
 
             nn.Conv2d(128, 256, 4, 2, 1),
-            nn.BatchNorm2d(256),
-            nn.LeakyReLU(self.slope, inplace=True),
-            nn.Dropout2d(p),
+            # nn.BatchNorm2d(256),
+            # nn.LeakyReLU(self.slope, inplace=True),
+            # nn.Dropout2d(p),
 
-            nn.Conv2d(256, 256, 1, 1),
+            # nn.Conv2d(256, 256, 1, 1),
             )
 
         self.classifier =nn.Sequential(
@@ -91,19 +91,6 @@ class Discriminator(nn.Module):
         x=self.main(x.reshape(-1,3,64,64)).reshape(x.shape[0],-1)
         return self.classifier(torch.cat((x,z),dim=1))
 
-    #     self.fc = nn.Sequential(
-    #         nn.Linear(z_dim + odim, 1024),
-    #         nn.LeakyReLU(0.2),
-    #         nn.Linear(1024, 1024),
-    #         nn.BatchNorm1d(1024, affine=False),
-    #         nn.LeakyReLU(0.2),
-    #         nn.Linear(1024, 1),
-    #         nn.Sigmoid()
-    #     )
-
-    # def forward(self, z, x):
-    #     x = torch.cat((z, x), dim=1)
-    #     return self.fc(x)
 
 class Encoder(nn.Module):
     def __init__(self, zdim, img_shape=(3,64,64),hidden_dims=[32,64,128,256]):
@@ -125,10 +112,10 @@ class Encoder(nn.Module):
             nn.LeakyReLU(self.slope, inplace=True),
 
             nn.Conv2d(128, 256, 4, 2, 1),
-            nn.BatchNorm2d(256),
-            nn.LeakyReLU(self.slope, inplace=True),
+            # nn.BatchNorm2d(256),
+            # nn.LeakyReLU(self.slope, inplace=True),
 
-            nn.Conv2d(256, 256, 1, 1),            
+            # nn.Conv2d(256, 256, 1, 1),            
             )
         self.lin = nn.Linear(hidden_dims[-1] * C, zdim)
 
@@ -213,7 +200,7 @@ class BiGAN(object):
 
     def loss(self, obs):
         _, _, _, _, label_real, label_fake = self.forward(obs)
-        d_loss = - 0.5 * (label_real+1e-6).log().mean() - 0.5 * (1 - label_fake + 1e-6).log().mean()
+        d_loss = - 0.5 * (label_real).log().mean() - 0.5 * (1 - label_fake).log().mean()
         return d_loss
 
     def sample(self, n):
