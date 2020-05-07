@@ -17,9 +17,10 @@ class RADPgAgent(BaseAgent):
     (model here outputs discrete probabilities in place of means and log_stds,
     while both output the value estimate).
     """
-    def __init__(self, ModelCls=None, model_kwargs=None, initial_model_state_dict=None, data_augs=""):
+    def __init__(self, ModelCls=None, model_kwargs=None, initial_model_state_dict=None, data_augs="", both_actions=False):
         super().__init__(ModelCls=ModelCls, model_kwargs=model_kwargs, initial_model_state_dict=initial_model_state_dict)
         self.data_augs = data_augs
+        self.both_actions = both_actions
 
     def aug_obs(self, observation):
         # Apply initial augmentations
@@ -42,9 +43,12 @@ class RADPgAgent(BaseAgent):
 
         # This is what needs to modified to apply the augmentation from the data.
         assert len(observation.shape) == 4, "Observation shape was not length 4"
-        observation = self.aug_obs(observation)
+        augmented = self.aug_obs(observation)
 
-        observation, prev_action, prev_reward = buffer_to((observation, prev_action, prev_reward),
+        observation = observation.type(torch.float)  # Expect torch.uint8 inputs
+        observation = observation.mul_(1. / 255)  # From [0-255] to [0-1], in place.
+
+        augmented, observation, prev_action, prev_reward = buffer_to((augmented, observation, prev_action, prev_reward),
             device=self.device)
 
         # For visualizing the observations
@@ -58,9 +62,11 @@ class RADPgAgent(BaseAgent):
         #     plt.show()
         # show_imgs(orig_observation)
         # show_imgs(observation)
-
-        pi, value = self.model(observation, prev_action, prev_reward)
-        return buffer_to((DistInfo(prob=pi), value), device="cpu")
+        aug_pi, aug_value = self.model(augmented, prev_action, prev_reward)
+        if self.both_actions:
+            pi, value = self.model(observation, prev_action, prev_reward)
+            return buffer_to((DistInfo(prob=aug_pi), DistInfo(prob=pi), aug_value, value), device="cpu")
+        return buffer_to((DistInfo(prob=aug_pi), aug_value), device="cpu")
 
     def initialize(self, env_spaces, share_memory=False,
             global_B=1, env_ranks=None):
