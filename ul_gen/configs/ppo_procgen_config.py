@@ -19,16 +19,16 @@ config = dict(
 
     ),
     env={
-        "id": "procgen:procgen-coinrun-v0",
+        "id": "procgen:procgen-bigfish-v0",
         "num_levels": 1000,
         "start_level": 0,
-        "distribution_mode": "hard"
+        "distribution_mode": "easy"
     },
     eval_env={
-        "id": "procgen:procgen-coinrun-v0",
+        "id": "procgen:procgen-bigfish-v0",
         "num_levels": 100,
         "start_level": 1000,
-        "distribution_mode": "hard"
+        "distribution_mode": "easy"
     },
     model=dict(
         img_shape=(3,64,64),
@@ -36,7 +36,7 @@ config = dict(
         value_layers=[64,64,1],
         zdim=256,
         noise_prob=.0,        
-        arch_type=0,
+        arch_type=1,
     ),
     optim=dict(),
     runner=dict(

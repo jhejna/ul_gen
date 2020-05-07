@@ -70,41 +70,32 @@ config = dict(
 pretrain_config = dict(
     load_path="",
     env={
-        "id": "procgen:procgen-climber-v0",
-        "num_levels": 1000,
+        "id": "procgen:procgen-coinrun-v0",
+        "num_levels": 100,
         "start_level": 0,
         "distribution_mode": "easy"
     },
     sampler=dict(
         batch_T=24,
-        batch_B=8,
+        batch_B=4,
         eval_n_envs=0,
         eval_max_steps=0,
         eval_max_trajectories=0
     ),
-    algo=dict(
-        vae_beta=1,
-        loss = "l2"
-    ),
+    algo=dict(),
     optim=dict(
-        lr=1e-4
+        lr=1e-5
     ),
     model=dict(
-        zdim=200,
-        img_shape=(3,64,64),
-        detach_vae=False,
-        deterministic=False,
-        policy_layers=[64,64,15],
-        value_layers=[64,64,1],
-        noise_prob=0.25,
-        noise_weight=1.,
-        no_noise_weight=.25,
-        arch_type=1,
+        zdim=100,
+        detach_encoder=False,
+        policy_layers=[15],
+        value_layers=[1],
     ),
     train_steps=int(1e6),
     log_freq=1000,
-    eval_freq=5000,
+    eval_freq=1000,
 )
 
-configs["ppo_vae"] = config
+configs["ppo_bigan"] = config
 configs["pretrain"] = pretrain_config

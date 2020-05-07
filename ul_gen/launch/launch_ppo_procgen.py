@@ -2,6 +2,7 @@ import os
 from rlpyt.utils.launching.affinity import encode_affinity
 from rlpyt.utils.launching.exp_launcher import run_experiments
 from rlpyt.utils.launching.variant import make_variants, VariantLevel
+from ul_gen.configs.ppo_procgen_config import configs
 
 affinity_code = encode_affinity(
     n_cpu_core=4,
@@ -11,11 +12,11 @@ affinity_code = encode_affinity(
     # cpu_per_run=2,
 )
 
-runs_per_setting = 2
+runs_per_setting = 1
 
 variant_levels = list()
 
-tasks = ['procgen:procgen-coinrun-v0']
+tasks = task= [configs['ppo']['env']['id']]
 values = list(zip(tasks))
 dir_names = ["{}".format(*v) for v in values]
 keys = [("env", "id")]

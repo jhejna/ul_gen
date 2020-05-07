@@ -113,6 +113,7 @@ class Decoder(nn.Module):
                         nn.ConvTranspose2d(in_channels, h_dim, 4, 2, 1)))
                 in_channels = h_dim
         modules.append(nn.Sequential(
+            nn.ReLU(True)
             nn.ConvTranspose2d(in_channels, channel_out, 4, 2, 1),
             nn.Sigmoid()))
         self.main = nn.Sequential(*modules)
