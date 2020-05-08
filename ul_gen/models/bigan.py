@@ -15,12 +15,15 @@ class Generator(nn.Module):
         self.init_dim = (self.h // 2 ** len(hidden_dims))
         C = self.init_dim **2
 
-        self.lin = nn.Linear(z_dim, C * hidden_dims[0] )        
+        self.lin = self.classifier =nn.Sequential(
+            nn.Linear(z_dim,hidden_dims[0]*C),
+            nn.ReLU(True))
+            # nn.Sigmoid())nn.Linear(z_dim, C * hidden_dims[0] )        
         self.main = nn.Sequential(
             # input dim: z_dim x 1 x 1
-            # nn.ConvTranspose2d(256, 256, 1, 1),
-            # nn.BatchNorm2d(256),
-            # nn.LeakyReLU(self.slope, inplace=True),
+            nn.ConvTranspose2d(256, 256, 1, 1),
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU(self.slope, inplace=True),
 
             nn.ConvTranspose2d(256, 128, 4, 2, 1),
             nn.BatchNorm2d(128),
@@ -49,31 +52,30 @@ class Generator(nn.Module):
     #     return x
 
 class Discriminator(nn.Module):
-    def __init__(self, zdim, img_shape=(3,64,64), hidden_dims=[256,128,64,32], ):
+    def __init__(self, zdim, img_shape=(3,64,64), lyrs=[16,32,64,128],dropout=.6 ):
         super(Discriminator, self).__init__()
-        p=.5
         in_channels,self.h,_ = img_shape
-        C = (self.h // 2 ** len(hidden_dims))**2
+        C = (self.h // 2 ** len(lyrs))**2
         odim = self.h*self.h*in_channels
 
         self.slope=.2
         self.main = nn.Sequential(
-            nn.Conv2d(3, 32, 4, 2, 1),
-            nn.BatchNorm2d(32),
+            nn.Conv2d(3, lyrs[0], 4, 2, 1),
+            nn.BatchNorm2d(lyrs[0]),
             nn.LeakyReLU(self.slope, inplace=True),
-            nn.Dropout2d(p),
+            nn.Dropout2d(dropout),
 
-            nn.Conv2d(32, 64, 4, 2, 1),
-            nn.BatchNorm2d(64),
+            nn.Conv2d(lyrs[0], lyrs[1], 4, 2, 1),
+            nn.BatchNorm2d(lyrs[1]),
             nn.LeakyReLU(self.slope, inplace=True),
-            nn.Dropout2d(p),
+            nn.Dropout2d(dropout),
 
-            nn.Conv2d(64, 128, 4, 2, 1),
-            nn.BatchNorm2d(128),
+            nn.Conv2d(lyrs[1], lyrs[2], 4, 2, 1),
+            nn.BatchNorm2d(lyrs[2]),
             nn.LeakyReLU(self.slope, inplace=True),
-            nn.Dropout2d(p),
+            nn.Dropout2d(dropout),
 
-            nn.Conv2d(128, 256, 4, 2, 1),
+            nn.Conv2d(lyrs[2], lyrs[3], 4, 2, 1),
             # nn.BatchNorm2d(256),
             # nn.LeakyReLU(self.slope, inplace=True),
             # nn.Dropout2d(p),
@@ -82,9 +84,9 @@ class Discriminator(nn.Module):
             )
 
         self.classifier =nn.Sequential(
-            nn.Linear(hidden_dims[0]*C + zdim,1024),
-            nn.ReLU(True),
-            nn.Linear(1024,1),
+            nn.Linear(lyrs[-1]*C + zdim,1),
+            # nn.ReLU(True),
+            # nn.Linear(1024,1),
             nn.Sigmoid())
 
     def forward(self, z, x):
@@ -112,12 +114,14 @@ class Encoder(nn.Module):
             nn.LeakyReLU(self.slope, inplace=True),
 
             nn.Conv2d(128, 256, 4, 2, 1),
-            # nn.BatchNorm2d(256),
-            # nn.LeakyReLU(self.slope, inplace=True),
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU(self.slope, inplace=True),
 
-            # nn.Conv2d(256, 256, 1, 1),            
+            nn.Conv2d(256, 256, 1, 1),            
             )
-        self.lin = nn.Linear(hidden_dims[-1] * C, zdim)
+        self.lin = nn.Sequential(
+            nn.ReLU(True),
+            nn.Linear(hidden_dims[-1]*C,zdim))
 
     def forward(self, x):
         x=self.main(x).reshape(x.shape[0],-1)
@@ -198,28 +202,33 @@ class BiGAN(object):
         latent, reconstruction = restore_leading_dims((z_fake, x_fake), lead_dim, T, B)
         return act_dist, value, latent, reconstruction, label_real, label_fake
 
-    def loss(self, obs):
+    def loss(self, obs, d_loss=True):
         _, _, _, _, label_real, label_fake = self.forward(obs)
-        d_loss = - 0.5 * (label_real).log().mean() - 0.5 * (1 - label_fake).log().mean()
-        return d_loss
+        if d_loss:
+            loss = - (label_real + 1e-6).log().mean() - (1 - label_fake - 1e-6).log().mean()
+        else:
+            loss = -(1- label_real - 1e-6).log().mean() - (1e-6+label_fake).log().mean()
+
+        return loss
 
     def sample(self, n):
         self.g.eval()
         with torch.no_grad():
             z = torch.randn(n, self.zdim).to(device)
             samples = self.g(z).reshape(-1, 3, 64, 64)
+        self.g.train()
         return (samples+1)/2
 
    
     def get_reconstructions(self, observation):
-        self.g.eval()
-        self.e.eval()
+
         lead_dim, T, B, img_shape = infer_leading_dims(observation, 3)
         obs = observation.view(T*B, *img_shape)[:10]
         obs =(obs.permute(0, 3, 1, 2).float() / 255.)*2 - 1
-        with torch.no_grad():
-            z = self.e(obs)
-            recons = self.g(z).reshape(-1, 3, 64, 64)
+
+        z = self.e(obs)
+        recons = self.g(z).reshape(-1, 3, 64, 64)
+
         return (torch.cat((obs,recons),dim=0)+1)/2
 
     def save_images(self,path, x, itr):

@@ -84,7 +84,7 @@ pretrain_config = dict(
     ),
     algo=dict(),
     optim=dict(
-        lr=1e-5
+        lr=1e-4
     ),
     model=dict(
         zdim=100,
@@ -94,7 +94,7 @@ pretrain_config = dict(
     ),
     train_steps=int(1e6),
     log_freq=1000,
-    eval_freq=1000,
+    eval_freq=5000,
 )
 
 configs["ppo_bigan"] = config

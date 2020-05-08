@@ -1,0 +1,33 @@
+{
+    "algo": {},
+    "env": {
+        "distribution_mode": "easy",
+        "id": "procgen:procgen-coinrun-v0",
+        "num_levels": 100,
+        "start_level": 0
+    },
+    "eval_freq": 5000,
+    "load_path": "",
+    "log_freq": 1000,
+    "model": {
+        "detach_encoder": false,
+        "policy_layers": [
+            15
+        ],
+        "value_layers": [
+            1
+        ],
+        "zdim": 100
+    },
+    "optim": {
+        "lr": 0.0001
+    },
+    "sampler": {
+        "batch_B": 4,
+        "batch_T": 24,
+        "eval_max_steps": 0,
+        "eval_max_trajectories": 0,
+        "eval_n_envs": 0
+    },
+    "train_steps": 1000000
+}
