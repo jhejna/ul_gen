@@ -1,14 +1,14 @@
 configs = dict()
 
 config = dict(
-    checkpoint="rad/bigfish_low_beta/ae-aug_vae_data-10000",
+    checkpoint=None, # "raug_vae_data/ae-aug_vae_data-3000",
     override=dict(
         policy_layers=[64,64,15],
         value_layers=[64,64,1]),
     agent=dict(vae_loss_type="l2",
-                vae_beta=0.05,
-                sim_loss_coef=0.025,
-                k_dim=96,
+                vae_beta=1.0,
+                sim_loss_coef=0.5,
+                k_dim=112,
                 data_augs="crop"),
     algo=dict(
         discount=0.999,

@@ -30,7 +30,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 affinity_code = encode_affinity(
     n_cpu_core=4,
-    n_gpu=1,
+    n_gpu=0,
     n_socket=1,
 )
 
@@ -42,6 +42,8 @@ config = configs["ppo_vae"]
 # Edit the sampler kwargs to get a larger batch size
 config["sampler"]["batch_T"] = 24
 config["sampler"]["batch_B"] = 16
+
+config["algo"]["learning_rate"] = 1e-4
 
 sampler = GpuSampler(
         EnvCls=make,
@@ -69,7 +71,7 @@ for itr in range(10000):
     agent_inputs = buffer_to(agent_inputs, device=device)
     
     optimizer.zero_grad()
-    _, _, loss = agent(*agent_inputs)
+    _, _, _, _, loss = agent(*agent_inputs)
     loss.backward()
     optimizer.step()
 
@@ -79,6 +81,7 @@ for itr in range(10000):
     if (itr + 1) % 1000 == 0:
         print("Saving.")
         # Save reconstructions
+
         x_hat = agent.reconstructions(*agent_inputs)
         x = agent_inputs.observation.detach().cpu().float() / 255.
 
