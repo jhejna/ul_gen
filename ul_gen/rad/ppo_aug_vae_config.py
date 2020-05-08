@@ -1,14 +1,14 @@
 configs = dict()
 
 config = dict(
-    checkpoint="raug_vae_data/ae-aug_vae_data-3000",
+    checkpoint=None, # "raug_vae_data/ae-aug_vae_data-3000",
     override=dict(
         policy_layers=[64,64,15],
         value_layers=[64,64,1]),
     agent=dict(vae_loss_type="l2",
-                vae_beta=0.5,
-                sim_loss_coef=0.25,
-                k_dim=96,
+                vae_beta=1.0,
+                sim_loss_coef=0.5,
+                k_dim=112,
                 data_augs="crop"),
     algo=dict(
         discount=0.999,
@@ -25,7 +25,7 @@ config = dict(
     ),
     env={
         "id": "procgen:procgen-bigfish-v0",
-        "num_levels": 200,
+        "num_levels": 100,
         "start_level": 0,
         "distribution_mode": "easy"
     },

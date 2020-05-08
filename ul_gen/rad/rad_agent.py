@@ -168,31 +168,23 @@ class RADPgVaeAgent(BaseAgent):
         observation_one = self.aug_obs(observation)
         observation_two = self.aug_obs(observation.detach().clone())
 
+        if hasattr(self.model, "final_act") and self.model.final_act == "tanh":
+            observation_one = 2*observation_one - 1
+            observation_two = 2*observation_two - 1
+
         observation_one, observation_two, prev_action, prev_reward = buffer_to((observation_one, observation_two, prev_action, prev_reward),
             device=self.device)
-
-        # For visualizing the observations
-        # import matplotlib.pyplot as plt
-        # from torchvision.utils import make_grid
-        # def show_imgs(x,max_display=16):
-        #     grid = make_grid(x[:max_display],4).permute(1,2,0).cpu().numpy()
-        #     plt.xticks([])
-        #     plt.yticks([])
-        #     plt.imshow(grid)
-        #     plt.show()
-        # show_imgs(orig_observation)
-        # show_imgs(observation)
 
         pi_one, value_one, latent_one, reconstruction_one = self.model(observation_one, prev_action, prev_reward)
         pi_two, value_two, latent_two, reconstruction_two = self.model(observation_two, prev_action, prev_reward)
         bs = 2*len(observation)
-
+        
         if self.vae_loss_type == "l2":
             recon_loss = (torch.sum((observation_one - reconstruction_one).pow(2)) +
                             torch.sum((observation_two - reconstruction_two).pow(2))) / bs
-        elif self.vae_loss_type == "bce":
-            recon_loss = (torch.nn.functional.binary_cross_entropy(reconstruction, obs) +
-                        torch.nn.functional.binary_cross_entropy(reconstruction, obs)) / 2
+        # elif self.vae_loss_type == "bce":
+        #     recon_loss = (torch.nn.functional.binary_cross_entropy(reconstruction, obs) +
+        #                 torch.nn.functional.binary_cross_entropy(reconstruction, obs)) / 2
         
         # Calculate the similarity loss
         mu_one, logsd_one = torch.chunk(latent_one, 2, dim=1)
@@ -209,11 +201,7 @@ class RADPgVaeAgent(BaseAgent):
         
         vae_loss = recon_loss + self.vae_beta * latent_loss + self.sim_loss_coef * sim_loss
 
-        # Average estimates for better power
-        value_est = (value_one + value_two) / 2
-        pi_est = (pi_one + pi_two) / 2
-
-        return buffer_to((DistInfo(prob=pi_est), value_est, vae_loss), device="cpu")
+        return buffer_to((DistInfo(prob=pi_one), DistInfo(prob=pi_two), value_one, value_two, vae_loss), device="cpu")
 
     def initialize(self, env_spaces, share_memory=False,
             global_B=1, env_ranks=None):
