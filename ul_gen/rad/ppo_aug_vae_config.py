@@ -1,31 +1,31 @@
 configs = dict()
 
 config = dict(
-    checkpoint="raug_vae_data/ae-aug_vae_data-3000",
+    checkpoint="rad/bigfish_low_beta/ae-aug_vae_data-10000",
     override=dict(
         policy_layers=[64,64,15],
         value_layers=[64,64,1]),
     agent=dict(vae_loss_type="l2",
-                vae_beta=0.5,
-                sim_loss_coef=0.25,
+                vae_beta=0.05,
+                sim_loss_coef=0.025,
                 k_dim=96,
                 data_augs="crop"),
     algo=dict(
         discount=0.999,
-        learning_rate=3e-4,        
+        learning_rate=4e-4,        
         value_loss_coeff=0.5,
         entropy_loss_coeff=0.01,
         clip_grad_norm=1.,
         gae_lambda=0.95,
         linear_lr_schedule=False,
-        minibatches=24,
+        minibatches=16,
         epochs=3,
         ratio_clip=.2,
         normalize_advantage=True,
     ),
     env={
         "id": "procgen:procgen-bigfish-v0",
-        "num_levels": 200,
+        "num_levels": 100,
         "start_level": 0,
         "distribution_mode": "easy"
     },
@@ -33,8 +33,8 @@ config = dict(
         zdim=128,
         img_shape=(3,64,64),
         detach_policy=True,
-        detach_vae=True,
-        detach_value=False,
+        detach_vae=False,
+        detach_value=True,
         deterministic=True,
         policy_layers=[64,64,15],
         value_layers=[64,64,1],

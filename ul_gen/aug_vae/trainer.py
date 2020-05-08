@@ -32,7 +32,7 @@ def train(params):
     with open(os.path.join(savepath, 'params.json'), 'w') as fp:
         json.dump(params, fp)
 
-    model = VAE(img_dim=params["img_dim"], img_channels=params["img_channels"], z_dim=params["z_dim"], final_act=params["final_act"]).to(device)
+    model = VAE(img_dim=params["img_dim"], img_channels=params["img_channels"], z_dim=params["z_dim"], final_act=params["final_act"], fc_size=params["fc_size"]).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=params['lr'])
 
     z_dim = params["z_dim"]
