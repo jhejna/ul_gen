@@ -14,7 +14,7 @@ def train(params):
     dataset = get_dataset(params)
     loader = torch.utils.data.DataLoader(dataset, batch_size=params["batch_size"], shuffle=True)
 
-    # Debug: print aug pairs next to each other.
+    # # Debug: print aug pairs next to each other.
     # from matplotlib import pyplot as plt
     # sample, _ = next(iter(loader))
     # plt.imshow(sample['orig'][0][0])
@@ -32,7 +32,7 @@ def train(params):
     with open(os.path.join(savepath, 'params.json'), 'w') as fp:
         json.dump(params, fp)
 
-    model = VAE(img_dim=params["img_dim"], img_channels=params["img_channels"], z_dim=params["z_dim"], final_act=params["final_act"]).to(device)
+    model = VAE(img_dim=params["img_dim"], img_channels=params["img_channels"], z_dim=params["z_dim"], final_act=params["final_act"], arch_type=params["arch_type"]).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=params['lr'])
 
     z_dim = params["z_dim"]
@@ -70,7 +70,7 @@ def train(params):
                 loss = recon_loss + beta * kl_loss + sim_loss_coef * sim_loss
             else:
                 loss = recon_loss + beta * kl_loss
-
+            
             loss.backward()
             optimizer.step()
             
