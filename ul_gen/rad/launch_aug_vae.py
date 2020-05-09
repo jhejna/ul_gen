@@ -15,10 +15,10 @@ runs_per_setting = 1
 variant_levels = list()
 
 # Later extend this to cover more games
-tasks = ["crop_horiz"]
+tasks = [True, False]
 values = list(zip(tasks))
 dir_names = ["{}".format(*v) for v in values]
-keys = [("agent", "data_augs")]
+keys = [("model", "detach_value")]
 variant_levels.append(VariantLevel(keys, values, dir_names))
 
 variants, log_dirs = make_variants(*variant_levels)
