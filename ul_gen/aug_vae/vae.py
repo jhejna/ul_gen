@@ -60,16 +60,16 @@ class VAE(torch.nn.Module):
         
         if arch_type == 1:
             self.encoder_net = torch.nn.Sequential(Reshape((img_dim*img_dim,)),
-                                                   torch.nn.Linear(img_dim*img_dim, 512),
+                                                   torch.nn.Linear(img_dim*img_dim, fc_size),
                                                    torch.nn.Tanh(),
-                                                   torch.nn.Linear(512, 512),
+                                                   torch.nn.Linear(fc_size, fc_size),
                                                    torch.nn.Tanh(),
-                                                   torch.nn.Linear(512, 2*self.z_dim))
-            self.decoder_net = torch.nn.Sequential(torch.nn.Linear(self.z_dim, 512),
+                                                   torch.nn.Linear(fc_size, 2*self.z_dim))
+            self.decoder_net = torch.nn.Sequential(torch.nn.Linear(self.z_dim, fc_size),
                                                    torch.nn.Tanh(),
-                                                   torch.nn.Linear(512, 512),
+                                                   torch.nn.Linear(fc_size, fc_size),
                                                    torch.nn.Tanh(),
-                                                   torch.nn.Linear(512, img_dim * img_dim),
+                                                   torch.nn.Linear(fc_size, img_dim * img_dim),
                                                    final_act_fn(),
                                                    Reshape((1, img_dim, img_dim)))
     

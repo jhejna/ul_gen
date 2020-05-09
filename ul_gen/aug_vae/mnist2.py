@@ -11,11 +11,12 @@ params = {
     "beta": 1.0,
     "epochs" : 60,
     "save_freq": 10,
-    "savepath": "mnist_vae_new",
+    "savepath": "mnist_vae_fc",
     "dataset": "mnist",
     "final_act" : "sigmoid",
     "arch_type" : 1,
     "loss_type" : "bce", 
+    "fc_size" : 512,
     "dataset_args": {
         "output_size": 28,
         "resize": None,
