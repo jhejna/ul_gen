@@ -16,6 +16,7 @@ config = dict(
         epochs=3,
         ratio_clip=.2,
         normalize_advantage=True,
+        normalize_rewards=True,
 
     ),
     env={
