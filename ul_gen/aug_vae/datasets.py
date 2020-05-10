@@ -34,6 +34,24 @@ class MnistAug(object):
 
         return img
 
+    def manual_img_aug(self, img, rescale=None, rotation=None):
+        if not rotation is None:
+            img = rotate(img, rotation, fill=(0,))
+        if not rescale is None:
+            w, h = img.size
+            # assert w == h, "Image must be square"
+            rescale = int(w * rescale)
+            img = resize(img, rescale)
+        
+        w, h = img.size
+        left_pad = random.randint(0, self.output_size - w)
+        top_pad = random.randint(0, self.output_size - h)
+        right_pad = self.output_size - w - left_pad
+        bottom_pad = self.output_size - h - top_pad
+        img = pad(img, (left_pad, top_pad, right_pad, bottom_pad), fill=0)
+
+        return to_tensor(img)
+
     def __call__(self, sample):
         aug = sample.copy()
         orig = to_tensor(self.aug_img(sample))

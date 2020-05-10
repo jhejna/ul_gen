@@ -6,22 +6,13 @@ from ul_gen.aug_vae.datasets import get_dataset
 from torchvision.utils import save_image
 import json
 
-def train(params):
+def cycle_train(params):
     
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # Load the dataset
     dataset = get_dataset(params)
     loader = torch.utils.data.DataLoader(dataset, batch_size=params["batch_size"], shuffle=True)
-
-    # # Debug: print aug pairs next to each other.
-    # from matplotlib import pyplot as plt
-    # sample, _ = next(iter(loader))
-    # plt.imshow(sample['orig'][0][0])
-    # plt.show()
-    # plt.imshow(sample['aug'][0][0])
-    # plt.show()
-    # exit()
 
     # Setup the save path
     savepath = params["savepath"]
@@ -48,30 +39,34 @@ def train(params):
     for epoch in range(params["epochs"]):
         for batch, _ in loader:
             optimizer.zero_grad()
-            # Concatenate to feed all the data through
-            x = torch.cat((batch['orig'], batch['aug']), dim=0).to(device)
-            if params["final_act"] == "tanh":
-                x = 2*x - 1
-            x_hat, mu, log_var = model(x)
-            kl_loss = torch.sum(-0.5*(1 + log_var - mu.pow(2) - log_var.exp())) / len(x) # Divide by batch size
+            x1, x2 = batch['orig'].to(device), batch['aug'].to(device)
             
+            # Pass X1 through the encoder
+            mu1, logvar1 = model.encoder(x1)
+            z1  = torch.exp(0.5*logvar1) * torch.randn_like(mu1) + mu1
+            kl1 = torch.sum(-0.5*(1 + logvar1 - mu1.pow(2) - logvar1.exp())) / len(x1)
+
+            # Pass X2 through the encoder
+            mu2, logvar2 = model.decoder(x2)
+            z2  = torch.exp(0.5*logvar2) * torch.randn_like(mu2) + mu2
+            kl2 = torch.sum(-0.5*(1 + logvar2 - mu2.pow(2) - logvar2.exp())) / len(x1)
+
+            # Swap the features past k_dim
+            # Everything past k_dim can distinguish the images.
+            recon_x2_in = torch.cat( (z1[:, :k_dim], z2[:, k_dim:]), dim=1)
+            recon_x1_in = torch.cat( (z2[:, :k_dim], z1[:, k_dim:]), dim=1)
+
+            xhat1 = model.decoder(recon_x1_in)
+            xhat2 = model.decoder(recon_x2_in)
+
             if loss_type == "l2":
-                recon_loss = torch.sum((x - x_hat).pow(2)) / len(x)
+                recon1 = torch.sum((x1 - xhat1).pow(2)) / len(x1)
+                recon2 = torch.sum((x2 - xhat2).pow(2)) / len(x2)
             elif loss_type == "bce":
-                recon_loss = torch.nn.functional.binary_cross_entropy(x_hat, x, reduction='sum') / len(x)
+                recon1 = torch.nn.functional.binary_cross_entropy(xhat1, x1, reduction='sum') / len(x1)
+                recon2 = torch.nn.functional.binary_cross_entropy(xhat2, x2, reduction='sum') / len(x2)
             
-            # Compute the similarity loss
-            if params["sim_loss_coef"] > 0:
-                mu_orig, mu_aug = torch.chunk(mu, 2, dim=0)
-                log_var_orig, log_var_aug = torch.chunk(log_var, 2, dim=0)
-                mu_orig, mu_aug = mu_orig[:, :k_dim], mu_aug[:, :k_dim]
-                log_var_orig, log_var_aug = log_var_orig[:, :k_dim], log_var_aug[:, :k_dim]
-                # KL divergence between original and augmented.
-                sim_loss = torch.sum(log_var_aug - log_var_orig + 0.5*(log_var_orig.exp() + (mu_orig - mu_aug).pow(2))/log_var_aug.exp() - 0.5)/ (len(x) // 2)
-                # sim_loss = torch.sum(0.5*(mu_orig - mu_aug).pow(2)) / len(x)
-                loss = recon_loss + beta * kl_loss + sim_loss_coef * sim_loss
-            else:
-                loss = recon_loss + beta * kl_loss
+            loss = 0.5 * (recon1 + recon2 + beta*(kl1 + kl2))
             
             loss.backward()
             optimizer.step()
