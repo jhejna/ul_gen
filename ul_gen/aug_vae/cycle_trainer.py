@@ -33,7 +33,7 @@ def cycle_train(params):
     beta = params["beta"]
     img_dim = params["img_dim"]
     img_channels = params["img_channels"]
-    sim_loss_coef = params["sim_loss_coef"]
+    sim_loss_coef = None # params["sim_loss_coef"]
     loss_type = params["loss_type"]
     
     for epoch in range(params["epochs"]):
@@ -55,7 +55,7 @@ def cycle_train(params):
             # Everything past k_dim can distinguish the images.
             recon_x2_in = torch.cat( (z1[:, :k_dim], z2[:, k_dim:]), dim=1)
             recon_x1_in = torch.cat( (z2[:, :k_dim], z1[:, k_dim:]), dim=1)
-            
+
             xhat1 = model.decoder(recon_x1_in)
             xhat2 = model.decoder(recon_x2_in)
 
@@ -75,7 +75,7 @@ def cycle_train(params):
             sim_loss_item = sim_loss.item()
         else:
             sim_loss_item = -1.0
-        print('Epoch %d Recon Loss: %.3f KL Loss: %.3f Sim Loss: %.3f' % (epoch+1, recon_loss.item(), kl_loss.item(), sim_loss_item))
+        print('Epoch %d Recon Loss: %.3f KL Loss: %.3f Sim Loss: %.3f' % (epoch+1, ((recon1 + recon2)/2).item(), ((kl1+kl2)/2).item(), sim_loss_item))
         
         if (epoch + 1) % params["save_freq"] == 0:
             # Save reconstructions and samples:
@@ -112,7 +112,7 @@ def cycle_train(params):
             if params["final_act"] == "tanh":
                 out_interp = (out_interp + 1)/2
             save_image(out_interp.detach().cpu(), os.path.join(savepath, 'interp_reg_' + str(epoch+1) +'.png'), nrow=10)
-
+            
             # Aug Interpolations
             diff_vec = z_aug - z_orig
             diff_vec[:, :k_dim] = 0
