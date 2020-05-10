@@ -84,12 +84,10 @@ if config["load_path"]:
 lr=config["optim"]["lr"]
 d_optimizer = torch.optim.Adam(model.d.parameters(), lr=lr, betas=(0.5, 0.999), weight_decay=2.5e-5)
 g_optimizer = torch.optim.Adam(list(model.e.parameters()) + list(model.g.parameters()), lr=lr, betas=(0.5, 0.999), weight_decay=2.5e-5)
-g_scheduler = torch.optim.lr_scheduler.LambdaLR(g_optimizer,
-                                                     lambda epoch: (steps - epoch) / steps,
+g_scheduler = torch.optim.lr_scheduler.LambdaLR(g_optimizer,lambda epoch: (steps - epoch) / steps,
                                                      last_epoch=-1)
 d_optimizer = torch.optim.Adam(model.d.parameters(), lr=lr, betas=(0., 0.9), weight_decay=2.5e-5)
-d_scheduler = torch.optim.lr_scheduler.LambdaLR(d_optimizer,
-                                                             lambda epoch: (steps - epoch) / steps,
+d_scheduler = torch.optim.lr_scheduler.LambdaLR(d_optimizer,lambda epoch: (steps - epoch) / steps,
                                                              last_epoch=-1)
 # Train
 for itr in range(steps):
@@ -101,26 +99,29 @@ for itr in range(steps):
         )
     inputs = buffer_to(inputs, device=device)[:,:]
     
-    d_optimizer.zero_grad()
-    d_loss = model.loss(inputs.observation)
-    d_loss.backward()
-    d_optimizer.step()
+    # discriminator only on even
+    if itr % 2 == 0:
+        d_optimizer.zero_grad()
+        d_loss = model.loss(inputs.observation, d_loss=True)
+        d_loss.backward()
+        d_optimizer.step()
 
     # generator and encoder update
     g_optimizer.zero_grad()
-    g_loss = -model.loss(inputs.observation)
+    g_loss = model.loss(inputs.observation, d_loss=False)
     g_loss.backward()
     g_optimizer.step()
 
     g_scheduler.step()
     d_scheduler.step()
+
     if (itr + 1) % config["log_freq"] == 0:
-        print("Iteration", itr+1, "D_loss:", d_loss.item()) 
+        print("Iteration", itr+1, "D_loss:", d_loss.item(), "G_loss:", g_loss.item()) 
     if (itr + 1) % config["eval_freq"] == 0:
         print("Iteration", itr+1, "Evaluating.")
         model.save_images(args.savepath, inputs.observation, itr) 
-        model.save_models(args.savepath, itr)
+        model.save_models(args.savepath,itr)
 
-model.save_models(f'{args.savepath}/vae-final')
+model.save_models('%s/vae-final'%args.savepath)
 print("Training complete.")
 sampler.shutdown()

@@ -47,6 +47,7 @@ class PPO_VAE(PolicyGradientAlgo):
             vae_loss_type="l2",
             vae_norm_loss=False,
             vae_update_freq=1,
+            normalize_rewards=True,
             ):
         """Saves input settings."""
         if optim_kwargs is None:
