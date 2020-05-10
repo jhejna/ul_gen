@@ -1,7 +1,7 @@
 configs = dict()
 
 config = dict(
-    checkpoint='/home/karam/Downloads/ul_gen/vae_data/experiment/vae1000easyclimber',
+    checkpoint='/home/karam/Downloads/ul_gen/vae_data/snp.25_hard_coin/vae',
     override=dict(
         override_policy_value=True, 
         policy_layers=[64,64,15],
@@ -23,23 +23,24 @@ config = dict(
         vae_loss_coeff=0.5,
         vae_loss_type="l2",
         vae_norm_loss=False,
+        normalize_rewards=True,
 
 
     ),
     env={
-        "id": "procgen:procgen-climber-v0",
+        "id": "procgen:procgen-coinrun-v0",
         "num_levels": 1000,
         "start_level": 0,
-        "distribution_mode": "easy"
+        "distribution_mode": "hard"
     },
     eval_env={
-        "id": "procgen:procgen-climber-v0",
+        "id": "procgen:procgen-coinrun-v0",
         "num_levels": 100,
         "start_level": 1000,
-        "distribution_mode": "easy"
+        "distribution_mode": "hard"
     },
     model=dict(
-        zdim=200,
+        zdim=256,
         img_shape=(3,64,64),
         detach_policy=False,
         detach_vae=True,
@@ -50,7 +51,7 @@ config = dict(
         noise_prob=0.25,        
         noise_weight=1.,
         no_noise_weight=.25,
-        arch_type=1,
+        arch_type=0,
         rae=False
     ),
     optim=dict(),
@@ -100,6 +101,7 @@ pretrain_config = dict(
         noise_weight=1.,
         no_noise_weight=.25,
         arch_type=1,
+        greyscale=False
     ),
     train_steps=int(1e6),
     log_freq=1000,

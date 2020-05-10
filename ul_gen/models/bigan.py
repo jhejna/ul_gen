@@ -8,48 +8,44 @@ from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class Generator(nn.Module):
-    def __init__(self, z_dim, img_shape=(3,64,64), hidden_dims=[256,128,64,32]):
+    def __init__(self, z_dim, img_shape=(3,64,64), lyrs=[256,128,64,32]):
         super(Generator, self).__init__()
         self.slope=.2
         self.h=64
-        self.init_dim = (self.h // 2 ** len(hidden_dims))
+        self.init_dim = (self.h // 2 ** len(lyrs))
         C = self.init_dim **2
 
         self.lin = self.classifier =nn.Sequential(
-            nn.Linear(z_dim,hidden_dims[0]*C),
-            nn.ReLU(True))
-            # nn.Sigmoid())nn.Linear(z_dim, C * hidden_dims[0] )        
+            nn.Linear(z_dim,1024),
+            nn.LeakyReLU(self.slope,True),
+            nn.Linear(1024, C * lyrs[0] )  ,
+            nn.LeakyReLU(self.slope,True))  
+                
         self.main = nn.Sequential(
             # input dim: z_dim x 1 x 1
-            nn.ConvTranspose2d(256, 256, 1, 1),
-            nn.BatchNorm2d(256),
+            nn.ConvTranspose2d(lyrs[0], lyrs[0], 1, 1),
+            nn.BatchNorm2d(lyrs[0]),
             nn.LeakyReLU(self.slope, inplace=True),
 
-            nn.ConvTranspose2d(256, 128, 4, 2, 1),
-            nn.BatchNorm2d(128),
+            nn.ConvTranspose2d(lyrs[0], lyrs[1], 4, 2, 1),
+            nn.BatchNorm2d(lyrs[1]),
             nn.LeakyReLU(self.slope, inplace=True),
 
-            nn.ConvTranspose2d(128, 64, 4, 2, 1),
-            nn.BatchNorm2d(64),
+            nn.ConvTranspose2d(lyrs[1], lyrs[2], 4, 2, 1),
+            nn.BatchNorm2d(lyrs[2]),
             nn.LeakyReLU(self.slope, inplace=True),
 
-            nn.ConvTranspose2d(64, 32, 4, 2, 1),
-            nn.BatchNorm2d(32),
+            nn.ConvTranspose2d(lyrs[2], lyrs[3], 4, 2, 1),
+            nn.BatchNorm2d(lyrs[3]),
             nn.LeakyReLU(self.slope, inplace=True),
 
-            nn.ConvTranspose2d(32, 3, 4, 2, 1),
+            nn.ConvTranspose2d(lyrs[3], 3, 4, 2, 1),
             nn.Tanh())
     
     def forward(self,z):
         z = self.lin(z).reshape(z.shape[0], -1, self.init_dim, self.init_dim)
         x = self.main(z)
         return x
-
-    # def forward(self, z):
-    #     bs = z.shape[0]
-    #     z = self.relu(self.lin(z)).reshape(bs, -1, self.init_dim, self.init_dim)
-    #     x = self.main(z)
-    #     return x
 
 class Discriminator(nn.Module):
     def __init__(self, zdim, img_shape=(3,64,64), lyrs=[16,32,64,128],dropout=.6 ):
@@ -95,33 +91,35 @@ class Discriminator(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, zdim, img_shape=(3,64,64),hidden_dims=[32,64,128,256]):
+    def __init__(self, zdim, img_shape=(3,64,64),lyrs=[32,64,128,256]):
         super(Encoder, self).__init__()
         self.slope=.2
         in_channels,self.h,_ = img_shape
-        C = (self.h // 2 ** len(hidden_dims))**2
+        C = (self.h // 2 ** len(lyrs))**2
         self.main = nn.Sequential(
-            nn.Conv2d(3, 32, 4, 2, 1),
-            nn.BatchNorm2d(32),
+            nn.Conv2d(3, lyrs[0], 4, 2, 1),
+            nn.BatchNorm2d(lyrs[0]),
             nn.LeakyReLU(self.slope, inplace=True),
 
-            nn.Conv2d(32, 64, 4, 2, 1),
-            nn.BatchNorm2d(64),
+            nn.Conv2d(lyrs[0], lyrs[1], 4, 2, 1),
+            nn.BatchNorm2d(lyrs[1]),
             nn.LeakyReLU(self.slope, inplace=True),
 
-            nn.Conv2d(64, 128, 4, 2, 1),
-            nn.BatchNorm2d(128),
+            nn.Conv2d(lyrs[1], lyrs[2], 4, 2, 1),
+            nn.BatchNorm2d(lyrs[2]),
             nn.LeakyReLU(self.slope, inplace=True),
 
-            nn.Conv2d(128, 256, 4, 2, 1),
-            nn.BatchNorm2d(256),
+            nn.Conv2d(lyrs[2], lyrs[3], 4, 2, 1),
+            nn.BatchNorm2d(lyrs[3]),
             nn.LeakyReLU(self.slope, inplace=True),
 
-            nn.Conv2d(256, 256, 1, 1),            
+            nn.Conv2d(lyrs[3], lyrs[3], 1, 1),            
             )
         self.lin = nn.Sequential(
-            nn.ReLU(True),
-            nn.Linear(hidden_dims[-1]*C,zdim))
+            nn.LeakyReLU(self.slope, inplace=True),
+            nn.Linear(lyrs[-1]*C, 1024),
+            nn.LeakyReLU(self.slope, True),
+            nn.Linear(1024,zdim))
 
     def forward(self, x):
         x=self.main(x).reshape(x.shape[0],-1)
@@ -132,15 +130,16 @@ from torchvision.utils import save_image
 class BiGAN(object):
 
     def __init__(self, zdim=128, shared_layers=[], policy_layers=[64, 64, 15,], value_layers=[64, 64, 1,],
+            dlyrs=[16,32,64,128], glyrs=[256,128,64,32],
             detach_encoder=False, detach_policy=False, detach_value=False, act_fn='relu' ):
         self.zdim=zdim
         self.detach_encoder=detach_encoder
         self.detach_value=detach_value
         self.detach_policy=detach_policy
 
-        self.d = Discriminator(zdim).to(device)
-        self.e = Encoder(zdim).to(device)
-        self.g = Generator(zdim).to(device)
+        self.d = Discriminator(zdim,lyrs=dlyrs).to(device)
+        self.e = Encoder(zdim,lyrs=glyrs[::-1]).to(device)
+        self.g = Generator(zdim,lyrs=glyrs).to(device)
         # act_fn = {
         #     'relu' : lambda: nn.ReLU(),
         #     'tanh' : lambda: nn.Tanh()

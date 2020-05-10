@@ -120,8 +120,8 @@ for itr in range(steps):
     if (itr + 1) % config["eval_freq"] == 0:
         print("Iteration", itr+1, "Evaluating.")
         model.save_images(args.savepath, inputs.observation, itr) 
-        # model.save_models(args.savepath, itr)
+        model.save_models(args.savepath,itr)
 
-model.save_models(f'{args.savepath}/vae-final')
+model.save_models('%s/vae-final'%args.savepath)
 print("Training complete.")
 sampler.shutdown()
