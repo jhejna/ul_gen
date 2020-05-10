@@ -5,16 +5,17 @@ params = {
     "img_channels": 1,
     "batch_size": 96,
     "lr": 1e-4,
-    "sim_loss_coef": 1.0,
+    "sim_loss_coef": 0.0,
     "z_dim": 32,
     "k_dim": 28,
-    "beta": 1.1,
-    "epochs" : 60,
+    "beta": 1.0,
+    "epochs" : 120,
     "save_freq": 10,
-    "savepath": "chairs_aug_vae",
+    "fc_size": 256,
+    "savepath": "chairs_aug_vae_long",
     "dataset": "chairs",
-    "final_act" : "sigmoid",
-    "loss_type" : "bce", 
+    "final_act" : "tanh",
+    "loss_type" : "l2", 
     "dataset_args": {}
 }
 

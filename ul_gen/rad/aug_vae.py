@@ -10,6 +10,7 @@ from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 from rlpyt.utils.buffer import buffer_to
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+
 class Encoder(nn.Module):
     def __init__(self, zdim, img_shape, arch_type, hidden_dims=[32,64,128,256], rae=False):
         super().__init__()
@@ -99,6 +100,68 @@ class Decoder(nn.Module):
         x = self.main(z)
         return x
 
+class Reshape(torch.nn.Module):
+  def __init__(self, output_shape):
+    super(Reshape, self).__init__()
+    self.output_shape = output_shape
+
+  def forward(self, x):
+    return x.view(*((len(x),) + self.output_shape))
+
+class Encoder2(nn.Module):
+    def __init__(self, img_dim=64, img_channels=3, z_dim=32, final_act="tanh", fc_size=256):
+        super().__init__()
+        self.img_dim = img_dim
+        self.z_dim = z_dim
+        self.img_channels = img_channels
+        # final_act_fn = lambda: torch.nn.Tanh() if final_act == "tanh" else torch.nn.Sigmoid()
+        final_feature_dim = img_dim // (2**4)
+        self.encoder_net = torch.nn.Sequential(
+                                            torch.nn.Conv2d(self.img_channels, 32, kernel_size=4, stride=2, padding=1),
+                                            torch.nn.ReLU(True),
+                                            torch.nn.Conv2d(32, 32, kernel_size=4, stride=2, padding=1),
+                                            torch.nn.ReLU(True),
+                                            torch.nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1),
+                                            torch.nn.ReLU(True),
+                                            torch.nn.Conv2d(64, 64, kernel_size=4, stride=2, padding=1),
+                                            torch.nn.ReLU(True),
+                                            torch.nn.Flatten(),
+                                            torch.nn.Linear(final_feature_dim*final_feature_dim*64, fc_size),
+                                            torch.nn.ReLU(True),
+                                            torch.nn.Linear(fc_size, 2*self.z_dim),
+                                            )
+    def forward(self, x):
+        mu, logsd = torch.chunk(self.encoder_net(x), 2, dim=1)
+        z = logsd.exp() * torch.randn_like(logsd) + mu
+        return z, mu, logsd
+
+class Decoder2(nn.Module):
+
+    def __init__(self, img_dim=64, img_channels=3, z_dim=32, final_act="tanh", fc_size=256):
+        super().__init__()
+        self.img_dim = img_dim
+        self.z_dim = z_dim
+        self.img_channels = img_channels
+        final_act_fn = lambda: torch.nn.Tanh() if final_act == "tanh" else torch.nn.Sigmoid()
+        final_feature_dim = img_dim // (2**4)
+        self.decoder_net = torch.nn.Sequential(torch.nn.Linear(self.z_dim, fc_size),
+                                        torch.nn.ReLU(True),
+                                        torch.nn.Linear(fc_size, final_feature_dim*final_feature_dim*64),
+                                        Reshape((64, final_feature_dim, final_feature_dim)),
+                                        torch.nn.ReLU(True),
+                                        torch.nn.ConvTranspose2d(64, 64, kernel_size=4, stride=2, padding=1),
+                                        torch.nn.ReLU(True),
+                                        torch.nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
+                                        torch.nn.ReLU(True),
+                                        torch.nn.ConvTranspose2d(32, 32, kernel_size=4, stride=2, padding=1),
+                                        torch.nn.ReLU(True),
+                                        torch.nn.ConvTranspose2d(32, self.img_channels, kernel_size=4, stride=2, padding=1),
+                                        final_act_fn(),
+                                        )
+
+    def forward(self, z):
+        return self.decoder_net(z)
+
 class RadVaePolicy(nn.Module):
 
     def __init__(self, zdim, img_shape=(3,64,64), shared_layers=[], 
@@ -106,7 +169,7 @@ class RadVaePolicy(nn.Module):
                         encoder_layers=[32, 64, 128, 256], decoder_layers=[256, 128, 64, 32],
                         act_fn='relu', deterministic=False,
                         detach_vae=False, detach_value=False,
-                        detach_policy=False, arch_type=0,
+                        detach_policy=False, arch_type=0, final_act="tanh",
                         rae=False):
 
         """
@@ -122,8 +185,12 @@ class RadVaePolicy(nn.Module):
         self.detach_policy = detach_policy
         self.detach_vae = detach_vae
         self.deterministic = deterministic
-        self.encoder = Encoder(zdim,img_shape,arch_type,hidden_dims=encoder_layers, rae=rae)
-        self.decoder = Decoder(zdim,img_shape,arch_type,hidden_dims=decoder_layers)
+        self.final_act = final_act
+        # self.encoder = Encoder(zdim,img_shape, arch_type, hidden_dims=encoder_layers, rae=rae)
+        # self.decoder = Decoder(zdim,img_shape, arch_type, hidden_dims=decoder_layers)
+        self.encoder = Encoder2(z_dim=zdim, img_dim=64, img_channels=3, final_act=final_act)
+        self.decoder = Decoder2(z_dim=zdim, img_dim=64, img_channels=3, final_act=final_act)
+
         act_fn = {
             'relu' : lambda: nn.ReLU(),
             'tanh' : lambda: nn.Tanh()
@@ -185,25 +252,6 @@ class RadVaePolicy(nn.Module):
         act_dist, value, latent, reconstruction = restore_leading_dims((act_dist, value, latent, reconstruction), lead_dim, T, B)
         return act_dist, value, latent, reconstruction
 
-    def log_images(self, obs, savepath, itr,n=100):
-        self.eval()
-        zs = torch.randn(n, self.zdim).to(device)
-        samples = self.decoder(zs)
-        obs = obs.reshape(-1, 64, 64, 3)[:10]
-        _, _, latent, reconstruction,_ = self.forward(obs)
-        obs = obs.float().to(device) / 255.
-        recon = torch.cat((obs, reconstruction),dim=0)
-        save_image(torch.Tensor(samples.detach().cpu()), os.path.join(savepath, 'samples_' + str(itr) +'.png'), nrow=10)
-        save_image(torch.Tensor(recon.detach().cpu()), os.path.join(savepath, 'recon_' + str(itr) +'.png'), nrow=10)
-        self.train()
-        torch.save(self.state_dict(), '%s/vae-%d' % (savepath, (itr+1 // 5)*5))
-
-    def log_samples(self, savepath, itr, n=64):
-        self.eval()
-        zs = torch.randn(n, self.zdim).to(device)
-        samples = self.decoder(zs)
-        save_image(torch.Tensor(samples.detach().cpu()), os.path.join(savepath, 'samples_' + str(itr) +'.png'), nrow=8)
-        self.train()
 
 class BaselinePolicy(nn.Module):
     def __init__(self, img_shape=(3, 64, 64), shared_layers=[], 
@@ -247,7 +295,7 @@ class BaselinePolicy(nn.Module):
     def forward(self, observation, prev_action, prev_reward):
         lead_dim, T, B, img_shape = infer_leading_dims(observation, 3)
         obs = observation.view(T*B, *img_shape)
-        _,extractor_in,_ = self.encoder(obs)
+        _, extractor_in,_ = self.encoder(obs)
         extractor_out = self.shared_extractor(extractor_in)
         act_dist = self.policy(extractor_out)
         value = self.value(extractor_out).squeeze(-1)
