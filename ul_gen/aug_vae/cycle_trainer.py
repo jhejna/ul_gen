@@ -80,7 +80,7 @@ def cycle_train(params):
         if (epoch + 1) % params["save_freq"] == 0:
             # Save reconstructions and samples:
             model.eval()
-            recon = torch.cat((x[:8], x_hat[:8]),dim=0) 
+            recon = torch.cat((x1[:8], xhat1[:8]),dim=0) 
             if params["final_act"] == "tanh":
                 recon = (recon + 1)/2
             save_image(recon.detach().cpu(), os.path.join(savepath, 'recon_' + str(epoch+1) +'.png'), nrow=8)
@@ -93,8 +93,8 @@ def cycle_train(params):
             
             # Prep For Interpolations
             n_interp = 8
-            x_orig, x_aug = torch.chunk(x, 2, dim=0)
-            x_orig, x_aug  = x_orig[:n_interp], x_aug[:n_interp]
+
+            x_orig, x_aug  = x1[:n_interp], x2[:n_interp]
             z_orig, _ = model.encoder(x_orig)
             z_aug, _ = model.encoder(x_aug)
 
@@ -112,7 +112,7 @@ def cycle_train(params):
             if params["final_act"] == "tanh":
                 out_interp = (out_interp + 1)/2
             save_image(out_interp.detach().cpu(), os.path.join(savepath, 'interp_reg_' + str(epoch+1) +'.png'), nrow=10)
-            
+
             # Aug Interpolations
             diff_vec = z_aug - z_orig
             diff_vec[:, :k_dim] = 0
