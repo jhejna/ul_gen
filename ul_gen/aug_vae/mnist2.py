@@ -1,4 +1,5 @@
 from ul_gen.aug_vae.trainer import train
+from ul_gen.aug_vae.cycle_trainer import cycle_train
 
 params = {
     "img_dim" : 28,
@@ -11,7 +12,7 @@ params = {
     "beta": 1.0,
     "epochs" : 50,
     "save_freq": 10,
-    "savepath": "mnist_vae_rot",
+    "savepath": "mnist_vae_cyc",
     "dataset": "mnist",
     "final_act" : "sigmoid",
     "arch_type" : 1,
@@ -24,4 +25,5 @@ params = {
     }
 }
 
-train(params)
+# train(params)
+cycle_train(params)

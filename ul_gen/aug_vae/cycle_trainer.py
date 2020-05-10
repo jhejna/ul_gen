@@ -47,7 +47,7 @@ def cycle_train(params):
             kl1 = torch.sum(-0.5*(1 + logvar1 - mu1.pow(2) - logvar1.exp())) / len(x1)
 
             # Pass X2 through the encoder
-            mu2, logvar2 = model.decoder(x2)
+            mu2, logvar2 = model.encoder(x2)
             z2  = torch.exp(0.5*logvar2) * torch.randn_like(mu2) + mu2
             kl2 = torch.sum(-0.5*(1 + logvar2 - mu2.pow(2) - logvar2.exp())) / len(x1)
 
@@ -55,7 +55,7 @@ def cycle_train(params):
             # Everything past k_dim can distinguish the images.
             recon_x2_in = torch.cat( (z1[:, :k_dim], z2[:, k_dim:]), dim=1)
             recon_x1_in = torch.cat( (z2[:, :k_dim], z1[:, k_dim:]), dim=1)
-
+            
             xhat1 = model.decoder(recon_x1_in)
             xhat2 = model.decoder(recon_x2_in)
 
