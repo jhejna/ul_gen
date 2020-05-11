@@ -53,8 +53,7 @@ def train_classifier(params, num_classes):
         for batch, y in loader:
             x, y = batch['orig'].to(device), y.to(device)
             optimizer.zero_grad()
-            with torch.no_grad():
-                z, _ = model.encoder(x)
+            z, _ = model.encoder(x)
             preds = classifier(z)
             loss = criterion(preds, y)
             loss.backward()
