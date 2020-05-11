@@ -39,7 +39,7 @@ class PPO_AUG_VAE(PolicyGradientAlgo):
             ratio_clip=0.1,
             linear_lr_schedule=True,
             normalize_advantage=False,
-            vae_loss_coeff=0.25,
+            vae_loss_coeff=0.5,
             ):
         """Saves input settings."""
         if optim_kwargs is None:

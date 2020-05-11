@@ -317,10 +317,10 @@ def random_color_jitter(imgs):
     """
     b,c,h,w = imgs.shape
     imgs = imgs.view(-1,3,h,w)
-    transform_module = nn.Sequential(ColorJitterLayer(brightness=0.4, 
-                                                contrast=0.4,
-                                                saturation=0.4, 
-                                                hue=0.5, 
+    transform_module = nn.Sequential(ColorJitterLayer(brightness=0.3, 
+                                                contrast=0.3,
+                                                saturation=0.3, 
+                                                hue=0.3,
                                                 p=1.0, 
                                                 batch_size=b,
                                                 stack_size=1))

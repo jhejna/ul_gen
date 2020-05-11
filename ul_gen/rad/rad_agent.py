@@ -162,7 +162,6 @@ class RADPgVaeAgent(BaseAgent):
 
     def __call__(self, observation, prev_action, prev_reward):
         prev_action = self.distribution.to_onehot(prev_action)
-
         # This is what needs to modified to apply the augmentation from the data.
         assert len(observation.shape) == 4, "Observation shape was not length 4"
         observation_one = self.aug_obs(observation)

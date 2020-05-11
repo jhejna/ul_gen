@@ -108,59 +108,6 @@ class Reshape(torch.nn.Module):
   def forward(self, x):
     return x.view(*((len(x),) + self.output_shape))
 
-class Encoder2(nn.Module):
-    def __init__(self, img_dim=64, img_channels=3, z_dim=32, final_act="tanh", fc_size=256):
-        super().__init__()
-        self.img_dim = img_dim
-        self.z_dim = z_dim
-        self.img_channels = img_channels
-        # final_act_fn = lambda: torch.nn.Tanh() if final_act == "tanh" else torch.nn.Sigmoid()
-        final_feature_dim = img_dim // (2**4)
-        self.encoder_net = torch.nn.Sequential(
-                                            torch.nn.Conv2d(self.img_channels, 32, kernel_size=4, stride=2, padding=1),
-                                            torch.nn.ReLU(True),
-                                            torch.nn.Conv2d(32, 32, kernel_size=4, stride=2, padding=1),
-                                            torch.nn.ReLU(True),
-                                            torch.nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1),
-                                            torch.nn.ReLU(True),
-                                            torch.nn.Conv2d(64, 64, kernel_size=4, stride=2, padding=1),
-                                            torch.nn.ReLU(True),
-                                            torch.nn.Flatten(),
-                                            torch.nn.Linear(final_feature_dim*final_feature_dim*64, fc_size),
-                                            torch.nn.ReLU(True),
-                                            torch.nn.Linear(fc_size, 2*self.z_dim),
-                                            )
-    def forward(self, x):
-        mu, logsd = torch.chunk(self.encoder_net(x), 2, dim=1)
-        z = logsd.exp() * torch.randn_like(logsd) + mu
-        return z, mu, logsd
-
-class Decoder2(nn.Module):
-
-    def __init__(self, img_dim=64, img_channels=3, z_dim=32, final_act="tanh", fc_size=256):
-        super().__init__()
-        self.img_dim = img_dim
-        self.z_dim = z_dim
-        self.img_channels = img_channels
-        final_act_fn = lambda: torch.nn.Tanh() if final_act == "tanh" else torch.nn.Sigmoid()
-        final_feature_dim = img_dim // (2**4)
-        self.decoder_net = torch.nn.Sequential(torch.nn.Linear(self.z_dim, fc_size),
-                                        torch.nn.ReLU(True),
-                                        torch.nn.Linear(fc_size, final_feature_dim*final_feature_dim*64),
-                                        Reshape((64, final_feature_dim, final_feature_dim)),
-                                        torch.nn.ReLU(True),
-                                        torch.nn.ConvTranspose2d(64, 64, kernel_size=4, stride=2, padding=1),
-                                        torch.nn.ReLU(True),
-                                        torch.nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
-                                        torch.nn.ReLU(True),
-                                        torch.nn.ConvTranspose2d(32, 32, kernel_size=4, stride=2, padding=1),
-                                        torch.nn.ReLU(True),
-                                        torch.nn.ConvTranspose2d(32, self.img_channels, kernel_size=4, stride=2, padding=1),
-                                        final_act_fn(),
-                                        )
-
-    def forward(self, z):
-        return self.decoder_net(z)
 
 class RadVaePolicy(nn.Module):
 
@@ -186,10 +133,9 @@ class RadVaePolicy(nn.Module):
         self.detach_vae = detach_vae
         self.deterministic = deterministic
         self.final_act = final_act
-        # self.encoder = Encoder(zdim,img_shape, arch_type, hidden_dims=encoder_layers, rae=rae)
-        # self.decoder = Decoder(zdim,img_shape, arch_type, hidden_dims=decoder_layers)
-        self.encoder = Encoder2(z_dim=zdim, img_dim=64, img_channels=3, final_act=final_act)
-        self.decoder = Decoder2(z_dim=zdim, img_dim=64, img_channels=3, final_act=final_act)
+        self.encoder = Encoder(zdim,img_shape, arch_type, hidden_dims=encoder_layers, rae=rae)
+        self.decoder = Decoder(zdim,img_shape, arch_type, hidden_dims=decoder_layers)
+
 
         act_fn = {
             'relu' : lambda: nn.ReLU(),
