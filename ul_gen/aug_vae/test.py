@@ -104,11 +104,15 @@ def classifier_test(model_path, num_classes):
     loader = torch.utils.data.DataLoader(dataset, batch_size=params["batch_size"], shuffle=True)
 
     # Define a linear classifier on top of the latents
-    classifier = torch.nn.Linear(params["z_dim"], num_classes, bias=False)
+    # classifier = torch.nn.Linear(params["z_dim"], num_classes, bias=False)
+    classifier = torch.nn.Sequential(torch.nn.Linear(params["z_dim"], 64),
+                                     torch.nn.Tanh(),
+                                     torch.nn.Linear(64, num_classes))
+
     optimizer = torch.optim.Adam(classifier.parameters(), lr=5e-3)
     criterion = torch.nn.CrossEntropyLoss()
-    
-    epochs = 3
+
+    epochs = 5
     for epoch in range(epochs):
         for batch, y in loader:
             x, y = batch['orig'].to(device), y.to(device)
@@ -139,5 +143,5 @@ def classifier_test(model_path, num_classes):
 
 
 if __name__ == "__main__":
-    classifier_test("/home/joey/misc/mnist_vae_rot/aug-vae-50", 10)
-    
+    classifier_test("/home/joey/misc/mnist_vae_cyc/aug-vae-50", 10)
+    # mnist_rot_test("/home/joey/misc/mnist_vae_cyc/aug-vae-50")
