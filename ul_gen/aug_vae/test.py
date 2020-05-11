@@ -131,7 +131,7 @@ def classifier_test(model_path, num_classes):
     correct_pts = 0.0
     classifier.eval()
     for batch, y in loader:
-        num_eval_pts += len(batch)
+        num_eval_pts += len(batch) // 2
         x, y = batch['orig'].to(device), y.to(device)
         logits = classifier(model.encoder(x)[0])
         preds = torch.argmax(logits, dim=1)
