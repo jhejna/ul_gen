@@ -23,6 +23,7 @@ def train_classifier(params, num_classes):
     # exit()
 
     # Setup the save path
+    
     savepath = params["savepath"]
     if not savepath.startswith("/"):
         savepath = os.path.join(os.path.dirname(ul_gen.__file__) + "/aug_vae/output", savepath)
@@ -65,7 +66,7 @@ def train_classifier(params, num_classes):
     correct_pts = 0.0
     classifier.eval()
     for batch, y in loader:
-        num_eval_pts += len(batch)
+        num_eval_pts += len(batch // 2)
         x, y = batch['orig'].to(device), y.to(device)
         logits = classifier(model.encoder(x)[0])
         preds = torch.argmax(logits, dim=1)
