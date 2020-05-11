@@ -14,7 +14,7 @@ params = {
     "epochs" : 50,
     "save_freq": 10,
     "savepath": "mnist_vae_cyc",
-    "dataset": "mnist",
+    "dataset": "mnist_aug",
     "final_act" : "sigmoid",
     "arch_type" : 1,
     "loss_type" : "bce", 
@@ -22,7 +22,7 @@ params = {
     "dataset_args": {
         "output_size": 28,
         "resize": None,
-        "rotate": (-60, 60),
+        "rotate": (-60, -20, 20, 60),
     }
 }
 

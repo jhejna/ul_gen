@@ -16,7 +16,15 @@ class MnistAug(object):
     
     def aug_img(self, img):
         if not self.rotate is None:
-            angle = random.uniform(*self.rotate)
+            if len(self.rotate) == 2:
+                angle = random.uniform(*self.rotate)
+            elif len(self.rotate) == 4:
+                total_length = self.rotate[1] - self.rotate[0] + self.rotate[3] - self.rotate[2]
+                num = random.uniform(0, total_length)
+                if num >= self.rotate[1] - self.rotate[0]:
+                    angle = self.rotate[2] + num - self.rotate[1] + self.rotate[0]
+                else:
+                    angle = self.rotate[0] + num
             img = rotate(img, angle, fill=(0,))
         if not self.resize is None:
             w, h = img.size
@@ -31,7 +39,7 @@ class MnistAug(object):
         right_pad = self.output_size - w - left_pad
         bottom_pad = self.output_size - h - top_pad
         img = pad(img, (left_pad, top_pad, right_pad, bottom_pad), fill=0)
-
+        
         return img
 
     def manual_img_aug(self, img, rescale=None, rotation=None):
@@ -59,8 +67,12 @@ class MnistAug(object):
 
         return {'orig': orig, 'aug': aug}
 
-def get_mnist(**kwargs):
+def get_mnist_aug(**kwargs):
     mnist_data = torchvision.datasets.MNIST('~/.pytorch/mnist', train=True, download=True, transform=MnistAug(**kwargs))
+    return mnist_data
+
+def get_mnist(**kwargs):
+    mnist_data = torchvision.datasets.MNIST('~/.pytorch/mnist', train=True, download=True, transform=ToTensor())
     return mnist_data
 
 def preprocess_chairs():
@@ -116,6 +128,7 @@ def get_dataset(params):
     dataset_name = params["dataset"]
     dataset_fn = {
         "mnist" : get_mnist,
+        "mnist_aug" : get_mnist_aug,
         "chairs" : get_chairs,
     }[dataset_name]
 
