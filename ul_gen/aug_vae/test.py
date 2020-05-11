@@ -104,11 +104,12 @@ def classifier_test(model_path, num_classes):
     loader = torch.utils.data.DataLoader(dataset, batch_size=params["batch_size"], shuffle=True)
 
     # Define a linear classifier on top of the latents
-    # classifier = torch.nn.Linear(params["z_dim"], num_classes, bias=False)
-    classifier = torch.nn.Sequential(torch.nn.Linear(params["z_dim"], 64),
-                                     torch.nn.Tanh(),
-                                     torch.nn.Linear(64, num_classes))
-    classifier.to(device)
+    classifier = torch.nn.Linear(params["z_dim"], num_classes, bias=False)
+    # classifier = torch.nn.Sequential(torch.nn.Linear(params["z_dim"], 64),
+    #                                  torch.nn.Tanh(),
+    #                                  torch.nn.Linear(64, num_classes))
+    classifier = classifier.to(device)
+
     optimizer = torch.optim.Adam(classifier.parameters(), lr=5e-3)
     criterion = torch.nn.CrossEntropyLoss()
 

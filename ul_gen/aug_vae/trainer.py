@@ -44,7 +44,7 @@ def train(params):
     img_channels = params["img_channels"]
     sim_loss_coef = params["sim_loss_coef"]
     loss_type = params["loss_type"]
-    
+
     for epoch in range(params["epochs"]):
         for batch, _ in loader:
             optimizer.zero_grad()
