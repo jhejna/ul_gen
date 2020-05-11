@@ -1,7 +1,7 @@
 configs = dict()
 
 config = dict(
-    checkpoint=None, # "raug_vae_data/ae-aug_vae_data-3000",
+    checkpoint="jitter_aug_vae/ae-aug_vae_data-10000",
     override=dict(
         policy_layers=[64,64,15],
         value_layers=[64,64,1]),

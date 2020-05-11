@@ -40,6 +40,7 @@ class PPO_AUG_VAE(PolicyGradientAlgo):
             linear_lr_schedule=True,
             normalize_advantage=False,
             vae_loss_coeff=0.5,
+            normalize_rewards=True
             ):
         """Saves input settings."""
         if optim_kwargs is None:
@@ -75,7 +76,7 @@ class PPO_AUG_VAE(PolicyGradientAlgo):
         agent_inputs = buffer_to(agent_inputs, device=self.agent.device)
         if hasattr(self.agent, "update_obs_rms"):
             self.agent.update_obs_rms(agent_inputs.observation)
-        return_, advantage, valid = self.process_returns(samples)
+        return_, advantage, valid = self.process_returns(samples, self.normalize_rewards)
         loss_inputs = LossInputs(  # So can slice all.
             agent_inputs=agent_inputs,
             action=samples.agent.action,

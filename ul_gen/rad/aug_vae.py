@@ -116,7 +116,7 @@ class RadVaePolicy(nn.Module):
                         encoder_layers=[32, 64, 128, 256], decoder_layers=[256, 128, 64, 32],
                         act_fn='relu', deterministic=False,
                         detach_vae=False, detach_value=False,
-                        detach_policy=False, arch_type=0, final_act="tanh",
+                        detach_policy=False, arch_type=0, final_act="sigmoid",
                         rae=False):
 
         """
@@ -132,7 +132,7 @@ class RadVaePolicy(nn.Module):
         self.detach_policy = detach_policy
         self.detach_vae = detach_vae
         self.deterministic = deterministic
-        self.final_act = final_act
+        # self.final_act = final_act
         self.encoder = Encoder(zdim,img_shape, arch_type, hidden_dims=encoder_layers, rae=rae)
         self.decoder = Decoder(zdim,img_shape, arch_type, hidden_dims=decoder_layers)
 

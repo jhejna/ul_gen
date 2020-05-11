@@ -30,7 +30,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 affinity_code = encode_affinity(
     n_cpu_core=4,
-    n_gpu=0,
+    n_gpu=1,
     n_socket=1,
 )
 
