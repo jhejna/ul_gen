@@ -1,5 +1,6 @@
 from ul_gen.aug_vae.trainer import train
 from ul_gen.aug_vae.cycle_trainer import cycle_train
+from ul_gen.aug_vae.classifier import train_classifier
 
 params = {
     "img_dim" : 28,
@@ -26,4 +27,5 @@ params = {
 }
 
 # train(params)
-cycle_train(params)
+# cycle_train(params)
+train_classifier(params, 10)
