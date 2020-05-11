@@ -167,9 +167,9 @@ class RADPgVaeAgent(BaseAgent):
         observation_one = self.aug_obs(observation)
         observation_two = self.aug_obs(observation.detach().clone())
 
-        if hasattr(self.model, "final_act") and self.model.final_act == "tanh":
-            observation_one = 2*observation_one - 1
-            observation_two = 2*observation_two - 1
+        # if hasattr(self.model, "final_act") and self.model.final_act == "tanh":
+        #     observation_one = 2*observation_one - 1
+        #     observation_two = 2*observation_two - 1
 
         observation_one, observation_two, prev_action, prev_reward = buffer_to((observation_one, observation_two, prev_action, prev_reward),
             device=self.device)
@@ -200,7 +200,9 @@ class RADPgVaeAgent(BaseAgent):
         
         vae_loss = recon_loss + self.vae_beta * latent_loss + self.sim_loss_coef * sim_loss
 
-        return buffer_to((DistInfo(prob=pi_one), DistInfo(prob=pi_two), value_one, value_two, vae_loss), device="cpu")
+        pi_avg = (pi_one + pi_two) / 2
+
+        return buffer_to((DistInfo(prob=pi_avg), value_one, value_two, vae_loss), device="cpu")
 
     def initialize(self, env_spaces, share_memory=False,
             global_B=1, env_ranks=None):
