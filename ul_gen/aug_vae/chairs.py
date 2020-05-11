@@ -1,4 +1,5 @@
 from ul_gen.aug_vae.trainer import train
+from ul_gen.aug_vae.cycle_trainer import cycle_train
 
 params = {
     "img_dim" : 64,
@@ -12,11 +13,14 @@ params = {
     "epochs" : 120,
     "save_freq": 10,
     "fc_size": 256,
-    "savepath": "chairs_aug_vae_long",
+    "arch_type" : 0,
+    "savepath": "chairs_vae_cycle",
     "dataset": "chairs",
     "final_act" : "tanh",
     "loss_type" : "l2", 
     "dataset_args": {}
 }
 
-train(params)
+#train(params)
+cycle_train(params)
+

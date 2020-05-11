@@ -108,7 +108,7 @@ def classifier_test(model_path, num_classes):
     classifier = torch.nn.Sequential(torch.nn.Linear(params["z_dim"], 64),
                                      torch.nn.Tanh(),
                                      torch.nn.Linear(64, num_classes))
-
+    classifier.to(device)
     optimizer = torch.optim.Adam(classifier.parameters(), lr=5e-3)
     criterion = torch.nn.CrossEntropyLoss()
 
@@ -143,5 +143,7 @@ def classifier_test(model_path, num_classes):
 
 
 if __name__ == "__main__":
-    classifier_test("/home/joey/misc/mnist_vae_cyc/aug-vae-50", 10)
+    #classifier_test("/home/joey/misc/mnist_vae_cyc/aug-vae-50", 10)
+    classifier_test("/home/joey/cs294-158/ul_gen/ul_gen/aug_vae/output/mnist_aug_vae_rot_16/aug-vae-50", 10)
+
     # mnist_rot_test("/home/joey/misc/mnist_vae_cyc/aug-vae-50")

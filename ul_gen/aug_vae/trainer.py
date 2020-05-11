@@ -28,7 +28,7 @@ def train(params):
     if not savepath.startswith("/"):
         savepath = os.path.join(os.path.dirname(ul_gen.__file__) + "/aug_vae/output", savepath)
 
-    os.makedirs(savepath, exist_ok=True)
+    os.makedirs(savepath, exist_ok=False)
     with open(os.path.join(savepath, 'params.json'), 'w') as fp:
         json.dump(params, fp)
 

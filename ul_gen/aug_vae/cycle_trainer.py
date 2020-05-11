@@ -19,7 +19,7 @@ def cycle_train(params):
     if not savepath.startswith("/"):
         savepath = os.path.join(os.path.dirname(ul_gen.__file__) + "/aug_vae/output", savepath)
 
-    os.makedirs(savepath, exist_ok=True)
+    os.makedirs(savepath, exist_ok=False)
     with open(os.path.join(savepath, 'params.json'), 'w') as fp:
         json.dump(params, fp)
 
@@ -40,7 +40,10 @@ def cycle_train(params):
         for batch, _ in loader:
             optimizer.zero_grad()
             x1, x2 = batch['orig'].to(device), batch['aug'].to(device)
-            
+            if params["final_act"] == "tanh":
+                x1 = 2*x1 - 1
+                x2 = 2*x2 - 1
+
             # Pass X1 through the encoder
             mu1, logvar1 = model.encoder(x1)
             z1  = torch.exp(0.5*logvar1) * torch.randn_like(mu1) + mu1
