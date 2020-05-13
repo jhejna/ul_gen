@@ -72,7 +72,35 @@ class VAE(torch.nn.Module):
                                                    torch.nn.Linear(fc_size, img_dim * img_dim),
                                                    final_act_fn(),
                                                    Reshape((1, img_dim, img_dim)))
-    
+
+        if arch_type == 2:
+            final_feature_dim = img_dim // (2**2)
+            self.encoder_net = torch.nn.Sequential(
+                                                torch.nn.Conv2d(self.img_channels, 32, kernel_size=3, stride=1, padding=1), # 28 x 28 output
+                                                torch.nn.ReLU(True),
+                                                torch.nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=1), # 14 x 14
+                                                torch.nn.ReLU(True),
+                                                torch.nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=1),
+                                                torch.nn.ReLU(True), 
+                                                torch.nn.Flatten(),
+                                                torch.nn.Linear(final_feature_dim*final_feature_dim*32, fc_size),
+                                                torch.nn.ReLU(True),
+                                                torch.nn.Linear(fc_size, 2*self.z_dim)
+                                                  )
+
+            self.decoder_net = torch.nn.Sequential(torch.nn.Linear(self.z_dim, fc_size),
+                                              torch.nn.ReLU(True),
+                                              torch.nn.Linear(fc_size, final_feature_dim*final_feature_dim*32),
+                                              Reshape((32, final_feature_dim, final_feature_dim)),
+                                              torch.nn.ReLU(True),
+                                              torch.nn.ConvTranspose2d(32, 32, kernel_size=3, stride=2, padding=1, output_padding=1),
+                                              torch.nn.ReLU(True),
+                                              torch.nn.ConvTranspose2d(32, 32, kernel_size=3, stride=2, padding=1, output_padding=1),
+                                              torch.nn.ReLU(True),
+                                              torch.nn.ConvTranspose2d(32, self.img_channels, kernel_size=3, stride=1, padding=1),
+                                              final_act_fn()
+                                                  )
+
     def encoder(self, x):
         mu, log_var = torch.chunk(self.encoder_net(x), 2, dim=1)
         return mu, log_var
