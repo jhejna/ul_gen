@@ -70,8 +70,8 @@ config = dict(
 pretrain_config = dict(
     load_path="",
     env={
-        "id": "procgen:procgen-coinrun-v0",
-        "num_levels": 100,
+        "id": "procgen:procgen-climber-v0",
+        "num_levels": 1000,
         "start_level": 0,
         "distribution_mode": "easy"
     },
@@ -84,17 +84,19 @@ pretrain_config = dict(
     ),
     algo=dict(),
     optim=dict(
-        lr=1e-5
+        lr=5e-4
     ),
     model=dict(
-        zdim=100,
+        zdim=150,
         detach_encoder=False,
+        glyrs=[2*i for i in [256,128,64,32]],
+        dlyrs=[i for i in [16,32,64,128]],
         policy_layers=[15],
         value_layers=[1],
     ),
-    train_steps=int(1e6),
+    train_steps=int(5e5),
     log_freq=1000,
-    eval_freq=1000,
+    eval_freq=5000,
 )
 
 configs["ppo_bigan"] = config

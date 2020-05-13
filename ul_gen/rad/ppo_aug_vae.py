@@ -39,7 +39,8 @@ class PPO_AUG_VAE(PolicyGradientAlgo):
             ratio_clip=0.1,
             linear_lr_schedule=True,
             normalize_advantage=False,
-            vae_loss_coeff=0.25,
+            vae_loss_coeff=0.5,
+            normalize_rewards=True
             ):
         """Saves input settings."""
         if optim_kwargs is None:
@@ -75,7 +76,7 @@ class PPO_AUG_VAE(PolicyGradientAlgo):
         agent_inputs = buffer_to(agent_inputs, device=self.agent.device)
         if hasattr(self.agent, "update_obs_rms"):
             self.agent.update_obs_rms(agent_inputs.observation)
-        return_, advantage, valid = self.process_returns(samples)
+        return_, advantage, valid = self.process_returns(samples, self.normalize_rewards)
         loss_inputs = LossInputs(  # So can slice all.
             agent_inputs=agent_inputs,
             action=samples.agent.action,
@@ -135,7 +136,7 @@ class PPO_AUG_VAE(PolicyGradientAlgo):
             init_rnn_state = buffer_method(init_rnn_state, "contiguous")
             dist_info, value, _rnn_state = self.agent(*agent_inputs, init_rnn_state)
         else:
-            dist_info, value, vae_loss = self.agent(*agent_inputs)
+            dist_info, value_one, value_two, vae_loss = self.agent(*agent_inputs)
         dist = self.agent.distribution
         ratio = dist.likelihood_ratio(action, old_dist_info=old_dist_info,
             new_dist_info=dist_info)
@@ -146,7 +147,7 @@ class PPO_AUG_VAE(PolicyGradientAlgo):
         surrogate = torch.min(surr_1, surr_2)
         pi_loss = - valid_mean(surrogate, valid)
 
-        value_error = 0.5 * (value - return_) ** 2
+        value_error = 0.25 * (value_one - return_) ** 2 + 0.25 * (value_two - return_) ** 2
         value_loss = self.value_loss_coeff * valid_mean(value_error, valid)
 
         entropy = dist.mean_entropy(dist_info, valid)

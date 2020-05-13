@@ -104,7 +104,7 @@ for itr in range(config["train_steps"]):
     if (itr + 1) % config["eval_freq"] == 0:
         print("Iteration", itr+1, "Evaluating.")
         model.log_images(inputs.observation, args.savepath, itr) 
-
+        # model.save_models(args.savepath,itr)
 torch.save(model.state_dict(), f'{args.savepath}/vae-final')
 print("Training complete.")
 sampler.shutdown()

@@ -15,7 +15,7 @@ runs_per_setting = 3
 variant_levels = list()
 
 # Later extend this to cover more games
-tasks = ["no_aug", "crop_horiz", "cutout_color"]
+tasks = ["color_jitter"]
 values = list(zip(tasks))
 dir_names = ["{}".format(*v) for v in values]
 keys = [("agent", "data_augs")]

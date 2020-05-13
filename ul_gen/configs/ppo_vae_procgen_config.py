@@ -27,7 +27,7 @@ config = dict(
     ),
     env={
         "id": "procgen:procgen-coinrun-v0",
-        "num_levels": 200,
+        "num_levels": 250,
         "start_level": 0,
         "distribution_mode": "hard"
     },
@@ -38,7 +38,7 @@ config = dict(
         "distribution_mode": "hard"
     },
     model=dict(
-        zdim=200,
+        zdim=256,
         img_shape=(3,64,64),
         detach_policy=False,
         detach_vae=True,
@@ -99,6 +99,7 @@ pretrain_config = dict(
         noise_weight=1.,
         no_noise_weight=.25,
         arch_type=1,
+        greyscale=False
     ),
     train_steps=int(1e6),
     log_freq=1000,

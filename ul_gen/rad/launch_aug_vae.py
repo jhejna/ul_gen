@@ -4,18 +4,18 @@ from rlpyt.utils.launching.exp_launcher import run_experiments
 from rlpyt.utils.launching.variant import make_variants, VariantLevel
 
 affinity_code = encode_affinity(
-    n_cpu_core=2,
+    n_cpu_core=4,
     n_gpu=1,
     n_socket=1,
-    contexts_per_gpu=1,
+    contexts_per_gpu=2,
 )
 
-runs_per_setting = 1
+runs_per_setting = 2
 
 variant_levels = list()
 
 # Later extend this to cover more games
-tasks = ["crop_horiz"]
+tasks = ["color_jitter"]
 values = list(zip(tasks))
 dir_names = ["{}".format(*v) for v in values]
 keys = [("agent", "data_augs")]

@@ -43,6 +43,8 @@ config = configs["ppo_vae"]
 config["sampler"]["batch_T"] = 24
 config["sampler"]["batch_B"] = 16
 
+config["algo"]["learning_rate"] = 1e-4
+
 sampler = GpuSampler(
         EnvCls=make,
         env_kwargs=config["env"],
@@ -69,7 +71,7 @@ for itr in range(10000):
     agent_inputs = buffer_to(agent_inputs, device=device)
     
     optimizer.zero_grad()
-    _, _, loss = agent(*agent_inputs)
+    _, _, _, _, loss = agent(*agent_inputs)
     loss.backward()
     optimizer.step()
 
@@ -79,6 +81,7 @@ for itr in range(10000):
     if (itr + 1) % 1000 == 0:
         print("Saving.")
         # Save reconstructions
+
         x_hat = agent.reconstructions(*agent_inputs)
         x = agent_inputs.observation.detach().cpu().float() / 255.
 

@@ -42,9 +42,9 @@ class PPO_ALAE(PolicyGradientAlgo):
             minibatches=4,
             epochs=4,
             ratio_clip=0.1,
-            linear_lr_schedule=True,
+            linear_lr_schedule=False,
             normalize_advantage=False,
-            normalize_rewards=False,
+            normalize_rewards=True,
             adam_betas=(0.0, 0.99),
             ):
         """Saves input settings."""

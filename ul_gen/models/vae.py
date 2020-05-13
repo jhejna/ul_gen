@@ -131,7 +131,7 @@ class VaePolicy(nn.Module):
                         detach_vae=False, detach_value=False,
                         detach_policy=False, arch_type=0.,
                         noise_prob=0.,noise_weight=1.,no_noise_weight=0.,
-                        rae=False):
+                        rae=False, greyscale=False):
 
         """
         arch_type: 0 for Conv2d-ReLU; 1 for Conv2d-BN-LeakyReLU
@@ -144,6 +144,7 @@ class VaePolicy(nn.Module):
         super().__init__()
         self.zdim = zdim
         self.rae = rae
+        self.greyscale=greyscale
         self.detach_value = detach_value
         self.detach_policy = detach_policy
         self.detach_vae = detach_vae
@@ -207,6 +208,8 @@ class VaePolicy(nn.Module):
         lead_dim, T, B, img_shape = infer_leading_dims(observation, 3)
         obs = observation.view(T*B, *img_shape)
         obs = obs.permute(0, 3, 1, 2).float() / 255.
+        if self.greyscale:
+            obs = torch.mean(obs,dim=1, keepdims=True)
         noise_idx = None
         if self.noise_prob:
             obs, noise_idx = salt_and_pepper(obs,self.noise_prob)
@@ -266,22 +269,24 @@ class VaePolicy(nn.Module):
             raise NotImplementedError
         return recon_loss, latent_loss
 
-    def log_images(self, obs, savepath, itr,n=100):
+    def log_images(self, obs, savepath, itr, device, n=100):
         self.eval()
-        zs = torch.randn(n, self.zdim).to(self.device)
+        zs = torch.randn(n, self.zdim).to(device)
         samples = self.decoder(zs)
         obs = obs.reshape(-1, 64, 64, 3)[:10]
         _, _, latent, reconstruction,_ = self.forward(obs)
-        obs = obs.permute(0, 3, 1, 2).float() / 255.
+        obs = obs.permute(0, 3, 1, 2).float().to(device) / 255.
+        if self.greyscale:
+            obs = torch.mean(obs,dim=1, keepdims=True)
         recon = torch.cat((obs, reconstruction),dim=0)
         save_image(torch.Tensor(samples.detach().cpu()), os.path.join(savepath, 'samples_' + str(itr) +'.png'), nrow=10)
         save_image(torch.Tensor(recon.detach().cpu()), os.path.join(savepath, 'recon_' + str(itr) +'.png'), nrow=10)
         self.train()
         torch.save(self.state_dict(), '%s/vae-%d' % (savepath, (itr+1 // 5)*5))
 
-    def log_samples(self, savepath, itr, n=64):
+    def log_samples(self, savepath, itr, device, n=64):
         self.eval()
-        zs = torch.randn(n, self.zdim).to(self.device)
+        zs = torch.randn(n, self.zdim).to(device)
         samples = self.decoder(zs)
         save_image(torch.Tensor(samples.detach().cpu()), os.path.join(savepath, 'samples_' + str(itr) +'.png'), nrow=8)
         self.train()
@@ -293,7 +298,7 @@ TEST POLICY
 class BaselinePolicy(nn.Module):
     def __init__(self, img_shape=(3, 64, 64), shared_layers=[], 
                         zdim=128, arch_type=0,encoder_layers=[32, 64, 128, 256],
-                        policy_layers=[64, 64, 15,], value_layers=[64, 64, 1,], act_fn='relu',
+                        policy_layers=[64, 64, 15], value_layers=[64, 64, 1,], act_fn='relu',
                         noise_prob=0):
 
         super().__init__()
