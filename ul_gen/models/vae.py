@@ -8,7 +8,6 @@ from torchvision.utils import save_image
 
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 from rlpyt.utils.buffer import buffer_to
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def salt_and_pepper(img,prob):
     assert prob <= 1
@@ -63,12 +62,12 @@ class Encoder(nn.Module):
         x = self.main(x).reshape(bs,-1)
         mu = self.mu(x)
         if self.rae:
-            z = mu
+            return mu
         else:
             logsd = self.logsd(x)
             eps = buffer_to(Variable(torch.randn([bs, self.zdim])), x.device)
             z = eps * logsd.exp() + mu
-        return z, mu, logsd
+            return z, mu, logsd
 
 class Decoder(nn.Module):
     def __init__(self, zdim, img_shape, arch_type, hidden_dims=[256,128,64,32]):
@@ -79,9 +78,8 @@ class Decoder(nn.Module):
 
         channel_out, self.h, _ = img_shape
         self.odim = self.h*self.h*channel_out
-        self.init_dim = (self.h // 2 ** len(hidden_dims))
+        self.init_dim = (self.h // (2 ** len(hidden_dims)))
         C = self.init_dim **2
-
         self.lin = nn.Linear(zdim, C * hidden_dims[0] )
         self.relu = nn.ReLU(True)
         modules=[nn.ConvTranspose2d(hidden_dims[0],hidden_dims[1], 4, 2, 1)] 
@@ -113,7 +111,7 @@ class Decoder(nn.Module):
                         nn.ConvTranspose2d(in_channels, h_dim, 4, 2, 1)))
                 in_channels = h_dim
         modules.append(nn.Sequential(
-            # nn.ReLU(True)
+            nn.ReLU(True),
             nn.ConvTranspose2d(in_channels, channel_out, 4, 2, 1),
             nn.Sigmoid()))
         self.main = nn.Sequential(*modules)
@@ -206,6 +204,7 @@ class VaePolicy(nn.Module):
         self.value = nn.Sequential(*value)
 
     def forward(self, observation, prev_action=None, prev_reward=None):
+        self.device = observation.device
         lead_dim, T, B, img_shape = infer_leading_dims(observation, 3)
         obs = observation.view(T*B, *img_shape)
         obs = obs.permute(0, 3, 1, 2).float() / 255.
@@ -245,8 +244,7 @@ class VaePolicy(nn.Module):
 
     def loss(self, loss_type, inputs):
         _, _, latent, reconstruction,noise_idx = self.forward(*inputs)
-        obs = buffer_to((inputs.observation), device)
-        obs = obs.permute(0, 1, 4, 2, 3).float() / 255.
+        obs = inputs.observation.permute(0, 1, 4, 2, 3).float() / 255.
         bs = obs.shape[0]* obs.shape[1]
 
         if self.rae:
@@ -271,7 +269,7 @@ class VaePolicy(nn.Module):
             raise NotImplementedError
         return recon_loss, latent_loss
 
-    def log_images(self, obs, savepath, itr,n=100):
+    def log_images(self, obs, savepath, itr, device, n=100):
         self.eval()
         zs = torch.randn(n, self.zdim).to(device)
         samples = self.decoder(zs)
@@ -286,7 +284,7 @@ class VaePolicy(nn.Module):
         self.train()
         torch.save(self.state_dict(), '%s/vae-%d' % (savepath, (itr+1 // 5)*5))
 
-    def log_samples(self, savepath, itr, n=64):
+    def log_samples(self, savepath, itr, device, n=64):
         self.eval()
         zs = torch.randn(n, self.zdim).to(device)
         samples = self.decoder(zs)

@@ -14,10 +14,16 @@ runs_per_setting = 2
 variant_levels = list()
 
 # Later extend this to cover more games
-tasks = ["color_jitter", "cutout_color", "flip", "color_jitter-flip"]
+tasks = ["color_jitter", "cutout_color", "grayscale", "crop"]
 values = list(zip(tasks))
 dir_names = ["{}".format(*v) for v in values]
 keys = [("agent", "data_augs")]
+variant_levels.append(VariantLevel(keys, values, dir_names))
+
+tasks = ["procgen:procgen-coinrun-v0", "procgen:procgen-bigfish-v0"]
+values = list(zip(tasks))
+dir_names = ["{}".format(*v) for v in values]
+keys = [("env", "id")]
 variant_levels.append(VariantLevel(keys, values, dir_names))
 
 variants, log_dirs = make_variants(*variant_levels)

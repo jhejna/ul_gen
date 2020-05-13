@@ -7,14 +7,14 @@ import os
 from ul_gen.configs.ppo_vae_procgen_config import configs
 
 affinity_code = encode_affinity(
-    n_cpu_core=4,
-    n_gpu=1,
+    n_cpu_core=12,
+    n_gpu=2,
     # hyperthread_offset=20,
-    n_socket=2
+    n_socket=None
     # cpu_per_run=2,
 )
 
-runs_per_setting = 1
+runs_per_setting = 2
 
 variant_levels = list()
 
@@ -29,8 +29,8 @@ variants, log_dirs = make_variants(*variant_levels)
 print("Variants", variants)
 print("Log_dirs", log_dirs)
 
-script = os.getcwd() + "/ul_gen/launch/train_ppo_vae_procgen.py"
-experiment_title = "ppo_vae_procgen"
+script = os.getcwd() + "/launch/train_ppo_vae_procgen.py"
+experiment_title = "ppo_vae_alternating"
 default_config_key = "ppo_vae"
 
 run_experiments(

@@ -15,10 +15,10 @@
 
 """Create a tfrecords for MNIST. """
 
-from defaults import get_cfg_defaults
+from ul_gen.alae.defaults import get_cfg_defaults
 import sys
 import logging
-from net import *
+from ul_gen.alae.net import *
 import numpy as np
 import argparse
 import os

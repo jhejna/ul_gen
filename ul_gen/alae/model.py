@@ -29,13 +29,13 @@ class DLatent(nn.Module):
 class Model(nn.Module):
     def __init__(self, startf=32, maxf=256, layer_count=3, latent_size=128, mapping_layers=5, dlatent_avg_beta=None,
                  truncation_psi=None, truncation_cutoff=None, style_mixing_prob=None, channels=3, generator="",
-                 encoder="", z_regression=False):
+                 encoder="", mapping_to_latent="MappingToLatent", z_regression=False):
         super(Model, self).__init__()
 
         self.layer_count = layer_count
         self.z_regression = z_regression
 
-        self.mapping_tl = MAPPINGS["MappingToLatent"](
+        self.mapping_tl = MAPPINGS[mapping_to_latent](
             latent_size=latent_size,
             dlatent_size=latent_size,
             mapping_fmaps=latent_size,
@@ -163,6 +163,118 @@ class Model(nn.Module):
             for p, p_other in zip(params, other_param):
                 p.data.lerp_(p_other.data, 1.0 - betta)
 
+
+class SimpleModel(nn.Module):
+    def __init__(self, startf=32, maxf=256, layer_count=3, latent_size=128, mapping_layers=5, dlatent_avg_beta=None,
+    truncation_psi=None, truncation_cutoff=None, style_mixing_prob=None, channels=3, generator="",             encoder="", mapping_to_latent="MappingToLatent", z_regression=False):
+        super(Model, self).__init__()
+
+        self.layer_count = layer_count
+        self.z_regression = z_regression
+
+        self.mapping_tl = MAPPINGS[mapping_to_latent](
+            latent_size=latent_size,
+            dlatent_size=latent_size,
+            mapping_fmaps=latent_size,
+            mapping_layers=3)
+
+        self.mapping_fl = MAPPINGS["MappingFromLatent"](
+            num_layers=2 * layer_count,
+            latent_size=latent_size,
+            dlatent_size=latent_size,
+            mapping_fmaps=latent_size,
+            mapping_layers=mapping_layers)
+
+        self.decoder = GENERATORS[generator](
+            startf=startf,
+            layer_count=layer_count,
+            maxf=maxf,
+            latent_size=latent_size,
+            channels=channels)
+
+        self.encoder = ENCODERS[encoder](
+            startf=startf,
+            layer_count=layer_count,
+            maxf=maxf,
+            latent_size=latent_size,
+            channels=channels)
+
+        self.dlatent_avg = DLatent(latent_size, self.mapping_fl.num_layers)
+        self.latent_size = latent_size
+        self.dlatent_avg_beta = dlatent_avg_beta
+        self.truncation_psi = truncation_psi
+        self.style_mixing_prob = style_mixing_prob
+        self.truncation_cutoff = truncation_cutoff
+
+    def generate(self, count=32, z=None, no_truncation=False):
+        if z is None:
+            z = torch.randn(count, self.latent_size)
+        styles = self.mapping_fl(z)[:, 0]
+        s = styles.view(styles.shape[0], 1, styles.shape[1])
+
+        styles = s.repeat(1, self.mapping_fl.num_layers, 1)
+      
+
+        rec = self.decoder.forward(styles)
+        return rec
+
+    def encode(self, x):
+        Z = self.encoder(x)
+        Z_ = self.mapping_tl(Z)
+        return Z[:, :1], Z_[:, 1, 0]
+
+    def forward(self, x, d_train, ae):
+        if ae:
+            self.encoder.requires_grad_(True)
+
+            z = torch.randn(x.shape[0], self.latent_size)
+            s, rec = self.generate(z=z)
+
+            Z, d_result_real = self.encode(rec, lod, blend_factor)
+
+            assert Z.shape == s.shape
+
+            if self.z_regression:
+                Lae = torch.mean(((Z[:, 0] - z)**2))
+            else:
+                Lae = torch.mean(((Z - s.detach())**2))
+
+            return Lae
+
+        elif d_train:
+            with torch.no_grad():
+                Xp = self.generate(lod, blend_factor, count=x.shape[0], noise=True)
+
+            self.encoder.requires_grad_(True)
+
+            _, d_result_real = self.encode(x, lod, blend_factor)
+
+            _, d_result_fake = self.encode(Xp.detach(), lod, blend_factor)
+
+            loss_d = losses.discriminator_logistic_simple_gp(d_result_fake, d_result_real, x)
+            return loss_d
+        else:
+            with torch.no_grad():
+                z = torch.randn(x.shape[0], self.latent_size)
+
+            self.encoder.requires_grad_(False)
+
+            rec = self.generate(count=x.shape[0], z=z.detach(), noise=True)
+
+            _, d_result_fake = self.encode(rec)
+
+            loss_g = losses.generator_logistic_non_saturating(d_result_fake)
+
+            return loss_g
+
+    def lerp(self, other, betta):
+        if hasattr(other, 'module'):
+            other = other.module
+        with torch.no_grad():
+            params = list(self.mapping_tl.parameters()) + list(self.mapping_fl.parameters()) + list(self.decoder.parameters()) + list(self.encoder.parameters()) + list(self.dlatent_avg.parameters())
+            other_param = list(other.mapping_tl.parameters()) + list(other.mapping_fl.parameters()) + list(other.decoder.parameters()) + list(other.encoder.parameters()) + list(other.dlatent_avg.parameters())
+            for p, p_other in zip(params, other_param):
+                p.data.lerp_(p_other.data, 1.0 - betta)
 
 class GenModel(nn.Module):
     def __init__(self, startf=32, maxf=256, layer_count=3, latent_size=128, mapping_layers=5, dlatent_avg_beta=None,

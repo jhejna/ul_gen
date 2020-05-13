@@ -54,7 +54,7 @@ configs["ppo"] = config
 
 config = dict(
     checkpoint=None,
-    agent=dict(data_augs="crop_horiz-cutout_color-flip", both_actions=True),
+    agent=dict(data_augs="", both_actions=True),
     algo=dict(
         discount=0.999,
         learning_rate=5e-4,
@@ -66,14 +66,15 @@ config = dict(
         epochs=3,
         ratio_clip=0.2,
         normalize_advantage=True,
+        normalize_rewards=True,
         similarity_loss=True,
         similarity_coeff=0.1
     ),
     env={
         "id": "procgen:procgen-coinrun-v0",
-        "num_levels": 200,
+        "num_levels": 250,
         "start_level": 0,
-        "distribution_mode": "easy"
+        "distribution_mode": "hard"
     },
     model=dict(
     ),

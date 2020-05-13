@@ -22,7 +22,7 @@ class MinibatchRlEvalVAE(MinibatchRlEval):
 
     def log_diagnostics(self, itr, eval_traj_infos, eval_time, prefix='Diagnostics/'):
         logger.log("INFO: Saving VAE Samples.")
-        self.agent.model.log_samples(logger.get_snapshot_dir(), itr)
+        self.agent.model.log_samples(logger.get_snapshot_dir(), itr, device=self.agent.device)
         super().log_diagnostics(itr, eval_traj_infos, eval_time, prefix=prefix)
 
 
