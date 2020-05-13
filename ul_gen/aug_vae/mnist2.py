@@ -7,13 +7,13 @@ params = {
     "img_channels": 1,
     "batch_size": 96,
     "lr": 1e-4,
-    "sim_loss_coef": 0.0,
+    "sim_loss_coef": 0.6,
     "z_dim": 11,
     "k_dim": 10,
     "beta": 1.0,
     "epochs" : 50,
     "save_freq": 10,
-    "savepath": "mnist_vae_cyc",
+    "savepath": "mnist_aug_vae_tilted",
     "dataset": "mnist_aug",
     "final_act" : "sigmoid",
     "arch_type" : 1,
@@ -22,7 +22,7 @@ params = {
     "dataset_args": {
         "output_size": 28,
         "resize": None,
-        "rotate": (-60, -20, 20, 60),
+        "rotate": (-65, -25, 25, 65),
     }
 }
 
