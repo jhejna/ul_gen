@@ -89,7 +89,7 @@ def mnist_rot_test(model_path):
         out_interp = (out_interp + 1)/2
     save_image(out_interp.detach().cpu(), os.path.join(save_path, 'test_interp_topk.png'), nrow=10)
 
-def classifier_test(model_path, num_classes):
+def classifier_test(model_path, num_classes, finetune=False):
     save_path = os.path.dirname(model_path)
     params_path = os.path.join(save_path, 'params.json')
     with open(params_path, 'r') as fp:
@@ -109,8 +109,12 @@ def classifier_test(model_path, num_classes):
     #                                  torch.nn.Tanh(),
     #                                  torch.nn.Linear(64, num_classes))
     classifier = classifier.to(device)
-
-    optimizer = torch.optim.Adam(classifier.parameters(), lr=5e-3)
+    params = []
+    params.extend(classifier.parameters())
+    if finetune:
+        params.extend(model.parameters())
+    
+    optimizer = torch.optim.Adam(params, lr=5e-3)
     criterion = torch.nn.CrossEntropyLoss()
 
     epochs = 5
@@ -118,14 +122,17 @@ def classifier_test(model_path, num_classes):
         for batch, y in loader:
             x, y = batch['orig'].to(device), y.to(device)
             optimizer.zero_grad()
-            with torch.no_grad():
+            if finetune:
                 z, _ = model.encoder(x)
+            else:
+                with torch.no_grad():
+                    z, _ = model.encoder(x)
             preds = classifier(z)
             loss = criterion(preds, y)
             loss.backward()
             optimizer.step()
         print("Finished epoch", epoch + 1, "Loss:", loss.item())
-
+    
     # Assess final accuracy on 10,000
     num_eval_pts = 0
     correct_pts = 0.0
