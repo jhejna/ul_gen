@@ -8,6 +8,7 @@ import json
 DATASET_TO_CLASSES = {
     "mnist" : 10,
     "aug_mnist" : 10,
+    "colored_mnist" : 10,
     "chairs" : 1393,
 }
 
@@ -29,7 +30,9 @@ def train_classifier(model_path, load_checkpoint=True, finetune=False,
 
     with open(params_path, 'r') as fp:
         params = json.load(fp)
-
+    params["dataset_args"]["test"] = False
+    params["dataset_args"]["bias_label"] = False
+    print("PARAMS", params)
     # Load the dataset
     dataset = get_dataset(params)
     loader = torch.utils.data.DataLoader(dataset, batch_size=params["batch_size"], shuffle=True)
@@ -54,7 +57,7 @@ def train_classifier(model_path, load_checkpoint=True, finetune=False,
         else:
             raise ValueError("Didn't provide a correct activation")
     classifier_layers.append(torch.nn.Linear(last_dim, num_classes, bias=False))
-    
+    classifier = torch.nn.Sequential(*classifier_layers).to(device) 
     parameters = []
     if finetune:
         parameters.extend(model.parameters())
@@ -65,7 +68,7 @@ def train_classifier(model_path, load_checkpoint=True, finetune=False,
 
     for epoch in range(epochs):
         for batch, y in loader:
-            x, y = batch['orig'].to(device), y.to(device)
+            x, y = batch.to(device), y.to(device)
             optimizer.zero_grad()
             if finetune:
                 mu, log_var = model.encoder(x)
@@ -88,19 +91,18 @@ def train_classifier(model_path, load_checkpoint=True, finetune=False,
         print("Finished epoch", epoch + 1, "Loss:", loss.item())
 
     # Assess final accuracy on 10,000
-
-    if test_dataset:
-        params["dataset"] = test_dataset
-        dataset = get_dataset(params)
-        loader = torch.utils.data.DataLoader(dataset, batch_size=params["batch_size"], shuffle=True)
+    params["dataset_args"]["test"] = True
+    params["dataset_args"]["bias_label"] = False
+    dataset = get_dataset(params)
+    loader = torch.utils.data.DataLoader(dataset, batch_size=params["batch_size"], shuffle=True)
 
     num_eval_pts = 0
     correct_pts = 0.0
     classifier.eval()
     model.eval()
     for batch, y in loader:
-        num_eval_pts += len(batch) // 2
-        x, y = batch['orig'].to(device), y.to(device)
+        num_eval_pts += len(batch)
+        x, y = batch.to(device), y.to(device)
         mu, log_var = model.encoder(x)
         if deterministic:
             z = mu
@@ -116,4 +118,6 @@ def train_classifier(model_path, load_checkpoint=True, finetune=False,
     print("FINAL ACCURACY", final_acc)
 
 if __name__ == "__main__":
-    train_classifier()
+    train_classifier("output/cmnist_vae/aug-vae-50", load_checkpoint=True,
+            finetune=False, lr=1e-3, epochs=5, deterministic=True,
+            hidden_layers=[32], activation="relu")

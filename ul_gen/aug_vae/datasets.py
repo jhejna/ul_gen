@@ -143,6 +143,7 @@ class ColoredMnist(Dataset):
             self.image = data_dic['train_image']
             self.label = data_dic['train_label']
         else:
+            print("USING TEST DATA")
             self.image = data_dic['test_image']
             self.label = data_dic['test_label']
         self.bias_label = bias_label

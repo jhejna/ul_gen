@@ -17,7 +17,7 @@ def train_bias(params):
     params["dataset_args"]["test"] = True
     test_data = get_dataset(params)
     test_loader = torch.utils.data.DataLoader(test_data, batch_size=params["batch_size"], shuffle=True)
-
+    params["dataset_args"]["test"] = False
     # # Debug: print aug pairs next to each other.
     # from matplotlib import pyplot as plt
     # sample, _, _ = next(iter(loader))
@@ -89,8 +89,8 @@ def train_bias(params):
             test_x, _, _ = next(iter(test_loader))
             test_x = test_x.to(device)
             
-            test_x_hat, _, _ = model(test_x[:8])
-            recon = torch.cat((test_x[:8], test_x_hat),dim=0) 
+            test_x_hat, _, _ = model(test_x[:24])
+            recon = torch.cat((test_x[:24], test_x_hat),dim=0) 
             if params["final_act"] == "tanh":
                 recon = (recon + 1)/2
             save_image(recon.detach().cpu(), os.path.join(savepath, 'test_recon_' + str(epoch+1) +'.png'), nrow=8)
