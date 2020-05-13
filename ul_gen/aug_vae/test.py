@@ -89,7 +89,7 @@ def mnist_rot_test(model_path):
         out_interp = (out_interp + 1)/2
     save_image(out_interp.detach().cpu(), os.path.join(save_path, 'test_interp_topk.png'), nrow=10)
 
-def classifier_test(model_path, num_classes, finetune=False):
+def classifier_test(model_path, num_classes, finetune=False, dataset_override=None):
     save_path = os.path.dirname(model_path)
     params_path = os.path.join(save_path, 'params.json')
     with open(params_path, 'r') as fp:
@@ -100,6 +100,8 @@ def classifier_test(model_path, num_classes, finetune=False):
                                         fc_size=params["fc_size"], arch_type=params["arch_type"]).to(device)
     model.load_state_dict(torch.load(model_path, map_location=torch.device(device)))
     
+    if dataset_override:
+        params["dataset"] = dataset_override
     dataset = get_dataset(params)
     loader = torch.utils.data.DataLoader(dataset, batch_size=params["batch_size"], shuffle=True)
 
@@ -132,7 +134,7 @@ def classifier_test(model_path, num_classes, finetune=False):
             loss.backward()
             optimizer.step()
         print("Finished epoch", epoch + 1, "Loss:", loss.item())
-    
+
     # Assess final accuracy on 10,000
     num_eval_pts = 0
     correct_pts = 0.0
@@ -152,6 +154,6 @@ def classifier_test(model_path, num_classes, finetune=False):
 
 if __name__ == "__main__":
     #classifier_test("/home/joey/misc/mnist_vae_cyc/aug-vae-50", 10)
-    classifier_test("/home/joey/cs294-158/ul_gen/ul_gen/aug_vae/output/mnist_aug_vae_rot_16/aug-vae-50", 10)
+    classifier_test("/home/joey/cs294-158/ul_gen/ul_gen/aug_vae/output/mnist_aug_vae_rot_16/aug-vae-50", 10, )
 
     # mnist_rot_test("/home/joey/misc/mnist_vae_cyc/aug-vae-50")
