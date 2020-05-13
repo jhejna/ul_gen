@@ -26,6 +26,4 @@ params = {
     }
 }
 
-# train(params)
-# cycle_train(params)
-train_classifier(params, 10)
+train(params, 10)

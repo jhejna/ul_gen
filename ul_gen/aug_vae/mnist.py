@@ -1,26 +1,29 @@
 from ul_gen.aug_vae.trainer import train
+from ul_gen.aug_vae.cycle_trainer import cycle_train
+from ul_gen.aug_vae.classifier import train_classifier
 
 params = {
-    "img_dim" : 64,
+    "img_dim" : 28,
     "img_channels": 1,
     "batch_size": 96,
-    "lr": 8e-5,
-    "sim_loss_coef": 0.0,
-    "z_dim": 20,
-    "k_dim": 15,
-    "fc_size" : 196,
+    "lr": 1e-4,
+    "sim_loss_coef": 0.6,
+    "z_dim": 11,
+    "k_dim": 10,
     "beta": 1.0,
-    "epochs" : 120,
+    "epochs" : 50,
     "save_freq": 10,
-    "savepath": "mnist_vae_large2",
-    "dataset": "mnist",
-    "final_act" : "tanh",
-    "loss_type" : "l2", 
+    "savepath": "mnist_vae_rot",
+    "dataset": "mnist_aug",
+    "final_act" : "sigmoid",
+    "arch_type" : 1,
+    "loss_type" : "bce", 
+    "fc_size" : 512,
     "dataset_args": {
-        "output_size": 64,
-        "resize": (1.0, 1.9),
+        "output_size": 28,
+        "resize": None,
         "rotate": (-60, 60),
     }
 }
 
-train(params)
+train(params, 10)
