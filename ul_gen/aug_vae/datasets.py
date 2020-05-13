@@ -163,7 +163,7 @@ class ColoredMnist(Dataset):
         label_image = torch.from_numpy(np.transpose(label_image,(2,0,1)))
         mask_image = torch.lt(label_image.float()-0.00001, 0.) * 255
         # print(mask_image)
-        label_image = torch.div(label_image,32)
+        label_image = torch.div(label_image,64)
         # label_image = label_image + mask_image
         # label_image = label_image.long()
         # print(label_image)

@@ -11,15 +11,15 @@ params = {
     "z_dim": 15,
     "k_dim": 12,
     "beta": 1.0,
-    "epochs" : 20,
+    "epochs" : 50,
     "save_freq": 10,
-    "pred_loss" : 0.01,
-    "savepath": "cmnist_bias_vae",
+    "pred_loss" : 20.0,
+    "savepath": "cmnist_bias_vae_high",
     "dataset": "colored_mnist",
     "final_act" : "sigmoid",
     "arch_type" : 2,
     "loss_type" : "bce", 
-    "fc_size" : 512,
+    "fc_size" : 128,
     "dataset_args": {
         "test" : False
     }
