@@ -8,6 +8,8 @@ from torch import nn
 from torchvision.transforms.functional import pad, resize, to_tensor, normalize, rotate
 from torchvision.utils import save_image
 
+from ul_gen.models import Reshape
+
 class PairedAug(object):
 
     def __init__(self, output_size, resize=None, rotate=None):
@@ -42,22 +44,6 @@ class PairedAug(object):
 
         return {'orig': orig, 'aug': aug}
 
-class Reshape(torch.nn.Module):
-  def __init__(self, output_shape):
-    super(Reshape, self).__init__()
-    self.output_shape = output_shape
-
-  def forward(self, x):
-    return x.view(*((len(x),) + self.output_shape))
-
-class PrintNode(torch.nn.Module):
-  def __init__(self, identifier="print:"):
-    super(PrintNode, self).__init__()
-    self.identifier = identifier
-
-  def forward(self, x):
-    print(self.identifier, x.shape)
-    return x
 
 class VAE(torch.nn.Module):
 

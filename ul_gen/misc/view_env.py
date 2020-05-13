@@ -12,7 +12,8 @@ env = gym.make(name)
 env = wrappers.Monitor(env, f'/home/ashwin/ul_gen/ul_gen/data/{name}/', force=True)
 obs = env.reset()
 
-img = plt.imshow(obs) # only call this once
+# img = plt.imshow(obs) # only call this once
+checkpoint = ''
 
 for _ in range(100):
     action = env.action_space.sample()

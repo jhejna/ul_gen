@@ -8,6 +8,8 @@ from torch import nn
 from torchvision.transforms.functional import pad, resize, to_tensor, normalize, rotate
 from torchvision.utils import save_image
 
+from ul_gen.models import Reshape
+
 class PairedAug(object):
 
     def __init__(self, output_size, resize=None, rotate=None):
@@ -41,25 +43,6 @@ class PairedAug(object):
         aug = 2*to_tensor(self.aug_img(aug)) - 1
 
         return {'orig': orig, 'aug': aug}
-
-class Reshape(torch.nn.Module):
-  def __init__(self, output_shape):
-    super(Reshape, self).__init__()
-    self.output_shape = output_shape
-
-  def forward(self, x):
-    return x.view(*((len(x),) + self.output_shape))
-
-class PrintNode(torch.nn.Module):
-  def __init__(self, identifier="print:"):
-    super(PrintNode, self).__init__()
-    self.identifier = identifier
-
-  def forward(self, x):
-    print(self.identifier, x.shape)
-    return x
-
-
 
 class AugVAE(torch.nn.Module):
 
@@ -134,6 +117,7 @@ savepath = 'vae_aug_test_rot'
 ############################
 os.makedirs(savepath, exist_ok=True)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 
 mnist_data = torchvision.datasets.MNIST('~/.pytorch/mnist', train=True, download=True, transform=PairedAug(img_dim, resize=scale_range, rotate=rot_range))
 loader = torch.utils.data.DataLoader(mnist_data, batch_size=batch_size, shuffle=True)
