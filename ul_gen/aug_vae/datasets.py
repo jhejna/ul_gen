@@ -71,8 +71,16 @@ def get_mnist_aug(**kwargs):
     mnist_data = torchvision.datasets.MNIST('~/.pytorch/mnist', train=True, download=True, transform=MnistAug(**kwargs))
     return mnist_data
 
+
+class MnistFormat(object):
+
+    def __call__(self, sample):
+        orig = to_tensor(sample)
+        aug = None
+        return {'orig': orig, 'aug': aug}
+
 def get_mnist(**kwargs):
-    mnist_data = torchvision.datasets.MNIST('~/.pytorch/mnist', train=True, download=True, transform=ToTensor())
+    mnist_data = torchvision.datasets.MNIST('~/.pytorch/mnist', train=True, download=True, transform=MnistFormat())
     return mnist_data
 
 def preprocess_chairs():
