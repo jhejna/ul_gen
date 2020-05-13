@@ -117,7 +117,7 @@ def train(params):
             if params["final_act"] == "tanh":
                 out_interp = (out_interp + 1)/2
             save_image(out_interp.detach().cpu(), os.path.join(savepath, 'interp_reg_' + str(epoch+1) +'.png'), nrow=10)
-
+            
             # Aug Interpolations
             diff_vec = z_aug - z_orig
             diff_vec[:, :k_dim] = 0

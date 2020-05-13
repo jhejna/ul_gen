@@ -162,10 +162,15 @@ class ColoredMnist(Dataset):
         label_image = image.resize((14,14), Image.NEAREST) 
         label_image = torch.from_numpy(np.transpose(label_image,(2,0,1)))
         mask_image = torch.lt(label_image.float()-0.00001, 0.) * 255
+        # print(mask_image)
         label_image = torch.div(label_image,32)
-        label_image = label_image + mask_image
-        label_image = label_image.long()
-        return self.T(image), label_image,  label.astype(np.long)
+        # label_image = label_image + mask_image
+        # label_image = label_image.long()
+        # print(label_image)
+        label_image = torch.max(torch.max(label_image, dim=2)[0], dim=1)[0]
+        # print(label_image)
+        # exit()
+        return self.T(image), label_image.long(),  label.astype(np.long)
 
     def __len__(self):
         return self.image.shape[0]

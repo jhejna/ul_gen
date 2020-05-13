@@ -4,6 +4,7 @@ import os
 from ul_gen.aug_vae.vae import VAE
 from ul_gen.aug_vae.datasets import get_dataset
 from torchvision.utils import save_image
+from torch.nn import functional as F
 import json
 
 def train_bias(params):
@@ -46,7 +47,14 @@ def train_bias(params):
     img_dim = params["img_dim"]
     img_channels = params["img_channels"]
     loss_type = params["loss_type"]
+    pred_loss = params["pred_loss"]
 
+    num_color_bins = 8
+    color_predictor = torch.nn.Sequential(torch.nn.Linear(k_dim, 128),
+                                            torch.nn.ReLU(),
+                                            torch.nn.Linear(128, 3*num_color_bins))
+    color_predictor_optim = torch.optim.Adam(color_predictor.parameters(), lr=params['lr'])
+    bias_criterion = torch.nn.CrossEntropyLoss(ignore_index=255)
     for epoch in range(params["epochs"]):
         for x, bias_label, y in loader:
             optimizer.zero_grad()
@@ -64,11 +72,40 @@ def train_bias(params):
                 recon_loss = torch.nn.functional.binary_cross_entropy(x_hat, x, reduction='sum') / len(x)
             
             loss = recon_loss + beta * kl_loss
-            
+
+            if pred_loss > 0.0:
+                # add the prediction loss.
+                r_logits, g_logits, b_logits = torch.chunk(color_predictor(mu[:, :k_dim]), 3, dim=1)
+                r_pred, g_pred, b_pred = F.softmax(r_logits, dim=1), F.softmax(g_logits, dim=1), F.softmax(b_logits, dim=1)
+
+                loss_r = torch.mean(torch.sum(r_pred * torch.log(r_pred),1))
+                loss_b = torch.mean(torch.sum(b_pred * torch.log(b_pred),1))
+                loss_g = torch.mean(torch.sum(g_pred * torch.log(g_pred),1))
+
+                loss = loss + pred_loss * (loss_r + loss_b + loss_g) / 3.
+
             loss.backward()
             optimizer.step()
 
-        print('Epoch %d Recon Loss: %.3f KL Loss: %.3f' % (epoch+1, recon_loss.item(), kl_loss.item()))
+            if pred_loss > 0.0:
+                # Train the bias predictor network.
+                color_predictor_optim.zero_grad()
+                mu, _ = model.encoder(x)
+                r_logits, g_logits, b_logits = torch.chunk(color_predictor(mu[:, :k_dim]), 3, dim=1)
+                # print(bias_label[:,0].shape)
+                bloss_r = bias_criterion(r_logits, bias_label[:, 0])
+                bloss_g = bias_criterion(b_logits, bias_label[:, 1])
+                bloss_b = bias_criterion(g_logits, bias_label[:, 2])
+                bias_loss = (bloss_r + bloss_g + bloss_b) / 3.
+
+                bias_loss.backward()
+                color_predictor_optim.step()
+                
+                bias_loss_item = bias_loss.item()
+            else:
+                bias_loss_item = -1.0
+
+        print('Epoch %d Recon Loss: %.3f KL Loss: %.3f Bias Loss: %.3f' % (epoch+1, recon_loss.item(), kl_loss.item(), bias_loss_item))
         
         if (epoch + 1) % params["save_freq"] == 0:
             # Save reconstructions and samples:
