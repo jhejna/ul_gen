@@ -40,6 +40,7 @@ class PPO_AUG(PolicyGradientAlgo):
             ratio_clip=0.1,
             linear_lr_schedule=True,
             normalize_advantage=False,
+            normalize_rewards=False,
             similarity_loss=False,
             similarity_coeff=0.1,
             ):
@@ -77,7 +78,7 @@ class PPO_AUG(PolicyGradientAlgo):
         agent_inputs = buffer_to(agent_inputs, device=self.agent.device)
         if hasattr(self.agent, "update_obs_rms"):
             self.agent.update_obs_rms(agent_inputs.observation)
-        return_, advantage, valid = self.process_returns(samples)
+        return_, advantage, valid = self.process_returns(samples, self.normalize_rewards)
         loss_inputs = LossInputs(  # So can slice all.
             agent_inputs=agent_inputs,
             action=samples.agent.action,
@@ -164,7 +165,7 @@ class PPO_AUG(PolicyGradientAlgo):
             pi_sim = F.cosine_similarity(dist_info.prob, og_dist_info.prob)
             value_sim = (value - og_value)**2
 
-        loss += -self.similarity_coeff * pi_sim.mean() + 0.5*value_sim
+        loss += -self.similarity_coeff * pi_sim.mean() + 0.5*value_sim.mean()
         # loss += self.similarity_coeff * (pi_sim.mean() + value_sim)
 
         perplexity = dist.mean_perplexity(dist_info, valid)

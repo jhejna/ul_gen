@@ -3,19 +3,24 @@ import torch
 from torchvision.utils import save_image
 from rlpyt.algos.pg.base import PolicyGradientAlgo, OptInfo
 from rlpyt.agents.base import AgentInputs, AgentInputsRnn
-from rlpyt.utils.tensor import valid_mean
+from rlpyt.utils.tensor import valid_mean, infer_leading_dims
 from rlpyt.utils.quick_args import save__init__args
 from rlpyt.utils.buffer import buffer_to, buffer_method
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.utils.misc import iterate_mb_idxs
 
 import itertools
+import logging
+from ul_gen.alae.checkpointer import Checkpointer
+from ul_gen.alae.scheduler import ComboMultiStepLR
+from ul_gen.alae.custom_adam import LREQAdam
+from ul_gen.alae.tracker import LossTracker
 
 LossInputs = namedarraytuple("LossInputs",
     ["agent_inputs", "action", "return_", "advantage", "valid", "old_dist_info"])
 
 
-class PPO_VAE(PolicyGradientAlgo):
+class PPO_ALAE(PolicyGradientAlgo):
     """
     Proximal Policy Optimization algorithm.  Trains the agent by taking
     multiple epochs of gradient steps on minibatches of the training data at
@@ -27,13 +32,10 @@ class PPO_VAE(PolicyGradientAlgo):
             self,
             discount=0.99,
             learning_rate=0.001,
-            vae_learning_rate=0.0001,
+            alae_learning_rate=0.002,
             value_loss_coeff=1.,
             entropy_loss_coeff=0.01,
             OptimCls=torch.optim.Adam,
-            optim_kwargs={},
-            VaeOptimCls=torch.optim.Adam,
-            vae_optim_kwargs={},
             clip_grad_norm=1.,
             initial_optim_state_dict=None,
             gae_lambda=1,
@@ -41,47 +43,81 @@ class PPO_VAE(PolicyGradientAlgo):
             epochs=4,
             ratio_clip=0.1,
             linear_lr_schedule=True,
-            vae_linear_lr_schedule=True,
             normalize_advantage=False,
             normalize_rewards=False,
-            vae_beta=1,
-            vae_loss_coeff=0.1,
-            vae_loss_type="l2",
-            vae_update_freq=1,
-            alternating_optim=False,
+            adam_betas=(0.0, 0.99),
             ):
         """Saves input settings."""
         save__init__args(locals())
 
-    def initialize(self, *args, **kwargs):
+    def initialize(self, agent, n_itr, batch_spec, mid_batch_reset=False,
+            examples=None, world_size=1, rank=0):
         """
         Extends base ``initialize()`` to initialize learning rate schedule, if
         applicable.
         """
-        super().initialize(*args, **kwargs)
-        self._batch_size = self.batch_spec.size // self.minibatches  # For logging.
-        if self.alternating_optim:
-            self.optim_params = itertools.chain(self.agent.model.policy.parameters(), self.agent.model.value.parameters())
-        else:
-            self.optim_params = self.agent.parameters()
-        self.optimizer = self.OptimCls(self.optim_params,
-            lr=self.learning_rate, **self.optim_kwargs)
-        if self.initial_optim_state_dict is not None:
-            self.optimizer.load_state_dict(self.initial_optim_state_dict)
+        self.agent = agent
+        self.alae = self.agent.model.alae
+        self.n_itr = n_itr
+        self.mid_batch_reset = mid_batch_reset
+        self.rets_rms = None
+        self._batch_size = batch_spec.size // self.minibatches  # For logging.
+
+        self.policy_params = itertools.chain(self.agent.model.policy.parameters(), self.agent.model.value.parameters())
+        self.policy_optimizer = self.OptimCls(self.policy_params, lr=self.learning_rate)
         if self.linear_lr_schedule:
             self.lr_scheduler = torch.optim.lr_scheduler.LambdaLR(
-                optimizer=self.optimizer,
+                optimizer=self.policy_optimizer,
                 lr_lambda=lambda itr: (self.n_itr - itr) / self.n_itr)  # Step once per itr.
             self._ratio_clip = self.ratio_clip  # Save base value.
         
-        if self.alternating_optim:
-            self.vae_params = itertools.chain(self.agent.model.encoder.parameters(), self.agent.model.decoder.parameters())
-            self.vae_optimizer = self.VaeOptimCls(self.vae_params, lr=self.vae_learning_rate, **self.vae_optim_kwargs)
-            if self.vae_linear_lr_schedule:
-                self.vae_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(
-                    optimizer=self.vae_optimizer,
-                    lr_lambda=lambda itr: (self.n_itr - itr) / self.n_itr)  # Step once per itr.
-                
+        self.decoder_optimizer = LREQAdam([
+            {'params': self.agent.model.alae.decoder.parameters()},
+            {'params': self.agent.model.alae.mapping.parameters()}
+        ], lr=self.alae_learning_rate, betas=self.adam_betas, weight_decay=0)
+
+        self.encoder_optimizer = LREQAdam([
+            {'params': self.agent.model.alae.encoder.parameters()},
+            {'params': self.agent.model.alae.discriminator.parameters()},
+        ], lr=self.alae_learning_rate, betas=self.adam_betas, weight_decay=0)
+        
+        # self.scheduler = ComboMultiStepLR(optimizers=
+        #                         {
+        #                         'encoder_optimizer': self.encoder_optimizer,
+        #                         'decoder_optimizer': self.decoder_optimizer
+        #                         },
+        #                         milestones=[],
+        #                         gamma=0.9,
+        #                         reference_batch_size=32, base_lr=[])
+
+        self.tracker = LossTracker('./data/alae/')
+
+        model_dict = {
+            'encoder': self.alae.encoder,
+            'generator': self.alae.decoder,
+            'mapping': self.alae.mapping,
+            'discriminator': self.alae.discriminator,
+            'policy': self.agent.model.policy,
+            'value': self.agent.model.value
+        }
+
+        self.logger = logging.getLogger("logger")
+        self.logger.setLevel(logging.DEBUG)
+
+        # self.checkpointer = Checkpointer(cfg,
+        #                             model_dict,
+        #                             {
+        #                                 'policy_optimizer': self.policy_optimizer,
+        #                                 'encoder_optimizer': self.encoder_optimizer,
+        #                                 'decoder_optimizer': self.decoder_optimizer,
+        #                                 # 'scheduler': self.scheduler,
+        #                                 'tracker': self.tracker
+        #                             },
+        #                             logger=self.logger,
+        #                             save=True)
+
+        # self.logger.info("Starting from epoch: %d" % (self.scheduler.start_epoch()))
+        
     
     def optimize_agent(self, itr, samples):
         """
@@ -90,10 +126,7 @@ class PPO_VAE(PolicyGradientAlgo):
         moves them to device (e.g. GPU) up front, so that minibatches are
         formed within device, without further data transfer.
         """
-        if hasattr(self, "beta"):
-            print("############################################")
-            print("#                 HAS BETA ATTRIBUTE       #")
-            print("############################################")
+
         recurrent = self.agent.recurrent
         agent_inputs = AgentInputs(  # Move inputs to device once, index there.
             observation=samples.env.observation,
@@ -124,39 +157,56 @@ class PPO_VAE(PolicyGradientAlgo):
             for idxs in iterate_mb_idxs(batch_size, mb_size, shuffle=True):
                 T_idxs = slice(None) if recurrent else idxs % T
                 B_idxs = idxs if recurrent else idxs // T
-                batch_input = loss_inputs[T_idxs, B_idxs]
-                
-                if self.alternating_optim:
-                    self.agent.model.detach_vae = True
-                    (dist_info, value, latent, reconstruction), noise_idx = self.agent(*batch_input.agent_inputs)
-                    self.vae_optimizer.zero_grad()
-                    vae_loss = self.vae_loss(batch_input.agent_inputs.observation, latent, reconstruction, noise_idx)
-                    vae_loss.backward()
-                    grad_norm = torch.nn.utils.clip_grad_norm_(self.vae_params, self.clip_grad_norm)
-                    self.vae_optimizer.step()
 
-                self.optimizer.zero_grad()
+                batch_input = loss_inputs[T_idxs, B_idxs]
+                obs = batch_input.agent_inputs.observation
+                lead_dim, T, B, img_shape = infer_leading_dims(obs, 3)
+                obs = obs.view(T*B, *img_shape)
+                obs = obs.permute(0, 3, 1, 2).float() / 255.
+                obs.requires_grad = True
+
+                self.encoder_optimizer.zero_grad()
+                loss_d = self.alae(obs, d_train=True, ae=False)
+                self.tracker.update(dict(loss_d=loss_d))
+                loss_d.backward()
+                self.encoder_optimizer.step()
+
+                self.decoder_optimizer.zero_grad()
+                loss_g = self.alae(obs, d_train=False, ae=False)
+                self.tracker.update(dict(loss_g=loss_g))
+                loss_g.backward()
+                self.decoder_optimizer.step()
+
+                self.encoder_optimizer.zero_grad()
+                self.decoder_optimizer.zero_grad()
+                lae = self.alae(obs, d_train=False, ae=True)
+                self.tracker.update(dict(lae=lae))
+                lae.backward()
+                self.encoder_optimizer.step()
+                self.decoder_optimizer.step()
+
+                self.policy_optimizer.zero_grad()
                 # NOTE: if not recurrent, will lose leading T dim, should be OK.
-                loss, entropy, perplexity = self.loss(*batch_input, dist_info, value, latent, reconstruction, noise_idx)
+                loss, entropy, perplexity = self.loss(*loss_inputs[T_idxs, B_idxs])
                 loss.backward()
-                grad_norm = torch.nn.utils.clip_grad_norm_(self.optim_params, self.clip_grad_norm)
-                self.optimizer.step()
+                grad_norm = torch.nn.utils.clip_grad_norm_(
+                    self.policy_params, self.clip_grad_norm)
+                self.policy_optimizer.step()
 
                 opt_info.loss.append(loss.item())
                 opt_info.gradNorm.append(grad_norm)
                 opt_info.entropy.append(entropy.item())
                 opt_info.perplexity.append(perplexity.item())
                 self.update_counter += 1
-
+    
         if self.linear_lr_schedule:
             self.lr_scheduler.step()
             self.ratio_clip = self._ratio_clip * (self.n_itr - itr) / self.n_itr
-        if self.vae_lr_scheduler:
-            self.vae_lr_scheduler.step()
+        # self.scheduler.step()
 
         return opt_info
 
-    def loss(self, agent_inputs, action, return_, advantage, valid, old_dist_info, dist_info, value, latent, reconstruction, noise_idx):
+    def loss(self, agent_inputs, action, return_, advantage, valid, old_dist_info):
         """
         Compute the training loss: policy_loss + value_loss + entropy_loss
         Policy loss: min(likelhood-ratio * advantage, clip(likelihood_ratio, 1-eps, 1+eps) * advantage)
@@ -165,7 +215,7 @@ class PPO_VAE(PolicyGradientAlgo):
         the ``agent.distribution`` to compute likelihoods and entropies.  Valid
         for feedforward or recurrent agents.
         """
-        (dist_info, value, latent, reconstruction), noise_idx = self.agent(*agent_inputs)
+        dist_info, value = self.agent(*agent_inputs)
         dist = self.agent.distribution
         ratio = dist.likelihood_ratio(action, old_dist_info=old_dist_info,
             new_dist_info=dist_info)
@@ -182,61 +232,21 @@ class PPO_VAE(PolicyGradientAlgo):
         entropy = dist.mean_entropy(dist_info, valid)
         entropy_loss = - self.entropy_loss_coeff * entropy
 
-        policy_loss = pi_loss + value_loss + entropy_loss # + self.vae_loss_coeff * vae_loss
-
-        if self.alternating_optim:
-            loss = policy_loss
-        else:
-            loss = policy_loss + self.vae_loss(agent_inputs.observation, latent, reconstruction, noise_idx)
-    
+        loss = pi_loss + value_loss + entropy_loss # + self.vae_loss_coeff * vae_loss
+        
         perplexity = dist.mean_perplexity(dist_info, valid)
         return loss, entropy, perplexity
 
-
-    def vae_loss(self, observation, latent, reconstruction, noise_idx):
-        obs = buffer_to((observation), "cpu")
-        obs = obs.permute(0, 3, 1, 2).float() / 255.
-        bs = obs.shape[0]
-
-        if self.agent.model.rae:
-            latent_loss = (0.5 * latent.pow(2).sum()) / bs
-        else:
-            mu, logsd = torch.chunk(latent, 2, dim=1)
-            logvar = 2*logsd
-            latent_loss = torch.sum(-0.5*(1 + logvar - mu.pow(2) - logvar.exp())) / bs
-
-        if self.vae_loss_type == "l2":
-            if self.agent.model.noise_prob:
-                obs, reconstruction = obs.reshape(bs,-1), reconstruction.reshape(bs,-1)
-                noise_idx = noise_idx.reshape(-1)
-                noise = torch.sum((obs[:,noise_idx]-reconstruction[:,noise_idx]).pow(2)) / bs
-                no_noise_idx = 1 - noise_idx
-                no_noise = torch.sum((obs[:,no_noise_idx]-reconstruction[:,no_noise_idx]).pow(2)) / bs
-                recon_loss = self.agent.model.noise_weight * noise + self.agent.model.no_noise_weight * no_noise
-            else:
-                recon_loss = torch.sum((obs - reconstruction).pow(2)) / bs
-
-        elif self.vae_loss_type == "bce":
-            recon_loss = torch.nn.functional.binary_cross_entropy(reconstruction, obs)
-        else:
-            raise NotImplementedError
-        
-        vae_loss = self.vae_loss_coeff * (recon_loss + self.vae_beta * latent_loss)
-        return vae_loss
-
-
+    
     def optim_state_dict(self):
-        if self.alternating_optim:
-            return {
-                'optimizer': self.optimizer.state_dict(),
-                'vae_optimizer': self.vae_optimizer.state_dict()
-            }
-        else:
-            return self.optimizer.state_dict()
+        return {
+            'policy_optimizer': self.policy_optimizer.state_dict(),
+            'encoder_optimizer': self.encoder_optimizer.state_dict(),
+            'decoder_optimizer': self.decoder_optimizer.state_dict(),
+        }
 
     def load_optim_state_dict(self, state_dict):
-        if self.alternating_optim:
-            self.optimizer = self.optimizer.load_state_dict(state_dict['optimizer'])
-            self.vae_optimizer = self.vae_optimizer.load_state_dict(state_dict['vae_optimizer'])
-        else:
-            self.optimizer = self.optimizer.load_state_dict(state_dict)
+        self.policy_optimizer = self.policy_optimizer.load_state_dict(state_dict['policy_optimizer'])
+        self.encoder_optimizer = self.encoder_optimizer.load_state_dict(state_dict['encoder_optimizer'])
+        self.decoder_optimizer = self.decoder_optimizer.load_state_dict(state_dict['decoder_optimizer'])
+

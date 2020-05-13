@@ -16,16 +16,16 @@ config = dict(
         epochs=3,
         ratio_clip=.2,
         normalize_advantage=True,
-
+        normalize_rewards=True,
     ),
     env={
-        "id": "procgen:procgen-bigfish-v0",
+        "id": "procgen:procgen-coinrun-v0",
         "num_levels": 1000,
         "start_level": 0,
         "distribution_mode": "easy"
     },
     eval_env={
-        "id": "procgen:procgen-bigfish-v0",
+        "id": "procgen:procgen-coinrun-v0",
         "num_levels": 100,
         "start_level": 1000,
         "distribution_mode": "easy"

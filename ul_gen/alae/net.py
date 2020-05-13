@@ -215,7 +215,7 @@ class DecodeBlock(nn.Module):
             else:
                 x = torch.addcmul(x, value=1.0, tensor1=self.noise_weight_1,
                                   tensor2=torch.randn([x.shape[0], 1, x.shape[2], x.shape[3]]))
-        else:
+        else: 
             s = math.pow(self.layer + 1, 0.5)
             x = x + s * torch.exp(-x * x / (2.0 * s * s)) / math.sqrt(2 * math.pi) * 0.8
         x = x + self.bias_1
@@ -918,12 +918,7 @@ class VAEMappingToLatentNoStyle(nn.Module):
 
     def forward(self, x):
         for i in range(self.mapping_layers):
-            if i == self.mapping_layers - 1:
-                #x = self.map_blocks[i](x)
-                x = self.map_blocks[i](x)
-            else:
-                #x = self.map_blocks[i](x)
-                x = self.map_blocks[i](x)
+            x = self.map_blocks[i](x)
         return x
 
 
@@ -953,21 +948,20 @@ class VAEMappingFromLatent(nn.Module):
 
 @ENCODERS.register("EncoderFC")
 class EncoderFC(nn.Module):
-    def __init__(self, startf, maxf, layer_count, latent_size, channels=3):
+    def __init__(self, latent_size, channels=3, image_size=64):
         super(EncoderFC, self).__init__()
-        self.maxf = maxf
-        self.startf = startf
-        self.layer_count = layer_count
+
         self.channels = channels
         self.latent_size = latent_size
+        self.image_size = image_size
 
-        self.fc_1 = ln.Linear(28 * 28, 1024)
+        self.fc_1 = ln.Linear(image_size * image_size, 1024)
         self.fc_2 = ln.Linear(1024, 1024)
         self.fc_3 = ln.Linear(1024, latent_size)
 
     def encode(self, x, lod):
-        x = F.interpolate(x, 28)
-        x = x.view(x.shape[0], 28 * 28)
+        # x = F.interpolate(x, 28)
+        x = x.view(x.shape[0], self.channels, self.image_size * self.image_size)
 
         x = self.fc_1(x)
         x = F.leaky_relu(x, 0.2)
@@ -978,27 +972,26 @@ class EncoderFC(nn.Module):
 
         return x
 
-    def forward(self, x, lod, blend):
-        return self.encode(x, lod)
+    def forward(self, x):
+        return self.encode(x)
 
 
 @GENERATORS.register("GeneratorFC")
 class GeneratorFC(nn.Module):
-    def __init__(self, startf=32, maxf=256, layer_count=3, latent_size=128, channels=3):
+    def __init__(self, latent_size=128, channels=3, image_size=64):
         super(GeneratorFC, self).__init__()
-        self.maxf = maxf
-        self.startf = startf
-        self.layer_count = layer_count
+
         self.channels = channels
         self.latent_size = latent_size
+        self.image_size = images_size
 
         self.fc_1 = ln.Linear(latent_size, 1024)
         self.fc_2 = ln.Linear(1024, 1024)
-        self.fc_3 = ln.Linear(1024, 28 * 28)
+        self.fc_3 = ln.Linear(1024, image_size * image_size)
 
         self.layer_to_resolution = [28] * 10
 
-    def decode(self, x, lod, blend_factor, noise):
+    def decode(self, x):
         if len(x.shape) == 3:
             x = x[:, 0]  # no styles
         x.view(x.shape[0], self.latent_size)
@@ -1008,10 +1001,11 @@ class GeneratorFC(nn.Module):
         x = self.fc_2(x)
         x = F.leaky_relu(x, 0.2)
         x = self.fc_3(x)
+        x = F.tanh(x)
 
-        x = x.view(x.shape[0], 1, 28, 28)
-        x = F.interpolate(x, 2 ** (2 + lod))
+        x = x.view(x.shape[0], self.channels, self.image_size, self.image_size)
+        # x = F.interpolate(x, 2 ** (2 + lod))
         return x
 
-    def forward(self, x, lod, blend_factor, noise):
-        return self.decode(x, lod, blend_factor, noise)
+    def forward(self, x):
+        return self.decode(x)

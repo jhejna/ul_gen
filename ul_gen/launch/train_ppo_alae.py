@@ -6,15 +6,14 @@ from rlpyt.samplers.parallel.gpu.sampler import GpuSampler
 from rlpyt.samplers.parallel.gpu.collectors import GpuWaitResetCollector, GpuResetCollector
 from rlpyt.envs import gym
 from procgen import ProcgenEnv
-from rlpyt.algos.pg.ppo import PPO
 from rlpyt.agents.pg.categorical import CategoricalPgAgent
 from rlpyt.runners.minibatch_rl import MinibatchRlEval
 from rlpyt.utils.logging.context import logger_context
 from rlpyt.utils.launching.variant import load_variant, update_config
 
-from ul_gen.configs.ppo_procgen_config import configs
-from ul_gen.models.vae import BaselinePolicy
-from ul_gen.models.impala import ProcgenPPOModel
+from ul_gen.configs.ppo_alae_config import configs
+from ul_gen.models.alae import ALAEPolicy
+from ul_gen.algos.ppo_alae import PPO_ALAE
 
 
 def build_and_train(slot_affinity_code, log_dir, run_ID, config_key):
@@ -35,9 +34,9 @@ def build_and_train(slot_affinity_code, log_dir, run_ID, config_key):
     else:
         model_state_dict = None
 
-    algo = PPO(optim_kwargs=config["optim"], **config["algo"])
+    algo = PPO_ALAE(**config["algo"])
     agent = CategoricalPgAgent(
-        ModelCls=BaselinePolicy,
+        ModelCls=ALAEPolicy,
         model_kwargs=config["model"],
         initial_model_state_dict=model_state_dict,
         **config["agent"]
