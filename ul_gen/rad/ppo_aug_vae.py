@@ -121,7 +121,7 @@ class PPO_AUG_VAE(PolicyGradientAlgo):
         return opt_info
 
     def loss(self, agent_inputs, action, return_, advantage, valid, old_dist_info,
-            init_rnn_state=None):
+            init_rnn_state=None, index=0):
         """
         Compute the training loss: policy_loss + value_loss + entropy_loss
         Policy loss: min(likelhood-ratio * advantage, clip(likelihood_ratio, 1-eps, 1+eps) * advantage)
@@ -154,8 +154,10 @@ class PPO_AUG_VAE(PolicyGradientAlgo):
         entropy_loss = -self.entropy_loss_coeff * entropy
         
         policy_loss = pi_loss + value_loss + entropy_loss
-        
-        loss = policy_loss + self.vae_loss_coeff * vae_loss
+        if self.update_counter % 8 == 0:
+            loss = policy_loss + self.vae_loss_coeff * vae_loss
+        else:
+            loss = policy_loss
 
         perplexity = dist.mean_perplexity(dist_info, valid)
         return loss, entropy, perplexity

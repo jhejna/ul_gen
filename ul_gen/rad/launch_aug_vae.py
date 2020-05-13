@@ -27,7 +27,7 @@ print("Variants", variants)
 print("Log_dirs", log_dirs)
 
 script = "rad/train_aug_vae.py"
-experiment_title = "aug_vae_procgen"
+experiment_title = "aug_vae_procgen_aug_step"
 default_config_key = "ppo_vae"
 
 run_experiments(
