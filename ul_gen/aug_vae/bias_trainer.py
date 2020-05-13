@@ -86,7 +86,7 @@ def train_bias(params):
             
 
             # Test Set Reconstructions
-            test_x, _, _ = next(iter(loader))
+            test_x, _, _ = next(iter(test_loader))
             test_x = test_x.to(device)
             
             test_x_hat, _, _ = model(test_x[:8])
