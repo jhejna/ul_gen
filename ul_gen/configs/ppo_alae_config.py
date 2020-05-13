@@ -2,10 +2,10 @@ configs = dict()
 
 config = dict(
     checkpoint=None,
-    override=dict(
-        override_policy_value=False, 
-        policy_layers=[64,64,15],
-        value_layers=[64,64,1]),
+    # override=dict(
+    #     override_policy_value=True, 
+    #     policy_layers=[64,64,15],
+    #     value_layers=[64,64,1]),
     agent=dict(),
     algo=dict(
         discount=0.999,
@@ -20,14 +20,11 @@ config = dict(
         ratio_clip=.2,
         normalize_advantage=True,
         normalize_rewards=True,
-        vae_beta=1,
-        vae_loss_coeff=0.5,
-        vae_loss_type="l2",
-        alternating_optim=True,
+        alae_learning_rate=2e-3,
     ),
     env={
         "id": "procgen:procgen-coinrun-v0",
-        "num_levels": 250,
+        "num_levels": 200,
         "start_level": 0,
         "distribution_mode": "hard"
     },
@@ -38,21 +35,15 @@ config = dict(
         "distribution_mode": "hard"
     },
     model=dict(
-        zdim=256,
+        zdim=128,
+        wdim=128,
         img_shape=(3,64,64),
-        detach_policy=False,
-        detach_vae=True,
-        detach_value=False,
-        deterministic=False,
+        detach_encoder=True,
         policy_layers=[64,64,15],
         value_layers=[64,64,1],
-        noise_prob=0.25,        
-        noise_weight=1.,
-        no_noise_weight=.25,
+        noise_prob=0.,        
         arch_type=1,
-        rae=False,
     ),
-    optim=dict(),
     runner=dict(
         n_steps=5e6,
         log_interval_steps=1e5,
@@ -69,42 +60,35 @@ config = dict(
 pretrain_config = dict(
     load_path="",
     env={
-        "id": "procgen:procgen-climber-v0",
+        "id": "procgen:procgen-coinrun-v0",
         "num_levels": 1000,
         "start_level": 0,
-        "distribution_mode": "easy"
+        "distribution_mode": "hard"
     },
     sampler=dict(
-        batch_T=24,
+        batch_T=32,
         batch_B=8,
         eval_n_envs=0,
         eval_max_steps=0,
         eval_max_trajectories=0
     ),
     algo=dict(
-        vae_beta=1,
-        loss = "l2"
-    ),
-    optim=dict(
-        lr=1e-4
+
     ),
     model=dict(
-        zdim=200,
+        zdim=128,
+        wdim=128,
         img_shape=(3,64,64),
-        detach_vae=False,
-        deterministic=False,
+        detach_encoder=True,
         policy_layers=[64,64,15],
         value_layers=[64,64,1],
-        noise_prob=0.25,
-        noise_weight=1.,
-        no_noise_weight=.25,
+        noise_prob=0.,
         arch_type=1,
-        greyscale=False
     ),
     train_steps=int(1e6),
     log_freq=1000,
     eval_freq=5000,
 )
 
-configs["ppo_vae"] = config
+configs["ppo_alae"] = config
 configs["pretrain"] = pretrain_config

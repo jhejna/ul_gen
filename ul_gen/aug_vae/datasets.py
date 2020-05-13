@@ -1,8 +1,11 @@
 from PIL import Image
+import torch
 import ul_gen
 from torchvision.transforms.functional import pad, resize, to_tensor, normalize, rotate
-from torchvision.transforms import Compose, Grayscale, ToTensor
+from torchvision.transforms import Compose, Grayscale, ToTensor, ToPILImage
 from torchvision.datasets import ImageFolder
+from torch.utils.data import Dataset
+import numpy as np
 import torchvision
 import random
 import os
@@ -132,13 +135,54 @@ class ChairsDataset(ImageFolder):
 def get_chairs(**kwargs):
     return ChairsDataset(transform=Compose([Grayscale(), ToTensor()]), **kwargs)
 
+class ColoredMnist(Dataset):
+    def __init__(self, test=False, bias_label=True):
+        DATASET_PATH = os.path.dirname(ul_gen.__file__) + "/aug_vae/data/colored_mnist/colored_mnist.npy"
+        data_dic = np.load(DATASET_PATH ,encoding='latin1').item()
+        if not test:
+            self.image = data_dic['train_image']
+            self.label = data_dic['train_label']
+        else:
+            self.image = data_dic['test_image']
+            self.label = data_dic['test_label']
+        self.bias_label = bias_label
+        self.T = ToTensor()
+        self.ToPIL = ToPILImage()
+
+    def __getitem__(self,index):
+        label = self.label[index]
+        image = self.image[index]
+        image = self.ToPIL(image)
+        
+        if not self.bias_label:
+            return self.T(image), label.astype(np.long)
+        
+        # Get the color label
+        label_image = image.resize((14,14), Image.NEAREST) 
+        label_image = torch.from_numpy(np.transpose(label_image,(2,0,1)))
+        mask_image = torch.lt(label_image.float()-0.00001, 0.) * 255
+        label_image = torch.div(label_image,32)
+        label_image = label_image + mask_image
+        label_image = label_image.long()
+        return self.T(image), label_image,  label.astype(np.long)
+
+    def __len__(self):
+        return self.image.shape[0]
+
+def get_colored_mnist(**kwargs):
+    return ColoredMnist(**kwargs)
+    
 def get_dataset(params):
     dataset_name = params["dataset"]
     dataset_fn = {
         "mnist" : get_mnist,
         "mnist_aug" : get_mnist_aug,
         "chairs" : get_chairs,
+        "colored_mnist" : get_colored_mnist
     }[dataset_name]
 
     return dataset_fn(**params["dataset_args"])
     
+
+if __name__ == "__main__":
+    get_colored_mnist()

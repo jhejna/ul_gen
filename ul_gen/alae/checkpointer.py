@@ -16,7 +16,7 @@
 import os
 from torch import nn
 import torch
-import utils
+import ul_gen.alae.utils
 
 
 def get_model_dict(x):
