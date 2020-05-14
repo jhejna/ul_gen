@@ -136,9 +136,10 @@ def get_chairs(**kwargs):
     return ChairsDataset(transform=Compose([Grayscale(), ToTensor()]), **kwargs)
 
 class ColoredMnist(Dataset):
-    def __init__(self, test=False, bias_label=True):
+    def __init__(self, test=False, bias_label=True, holdout=[]):
         DATASET_PATH = os.path.dirname(ul_gen.__file__) + "/aug_vae/data/colored_mnist/colored_mnist.npy"
         data_dic = np.load(DATASET_PATH ,encoding='latin1').item()
+        self.holdout = holdout
         if not test:
             self.image = data_dic['train_image']
             self.label = data_dic['train_label']
@@ -146,6 +147,10 @@ class ColoredMnist(Dataset):
             print("USING TEST DATA")
             self.image = data_dic['test_image']
             self.label = data_dic['test_label']
+        for d in self.holdout:
+            idx_keep=(self.label != d).nonzero()[0]
+            self.image, self.label = self.image[idx_keep].squeeze(), self.label[idx_keep].squeeze()
+        
         self.bias_label = bias_label
         self.T = ToTensor()
         self.ToPIL = ToPILImage()
