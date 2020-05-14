@@ -22,3 +22,19 @@ class MLP(nn.Module):
     def forward(self, x):
         return self.model(x)
 
+class Reshape(torch.nn.Module):
+  def __init__(self, output_shape):
+    super(Reshape, self).__init__()
+    self.output_shape = output_shape
+
+  def forward(self, x):
+    return x.view(*((len(x),) + self.output_shape))
+
+class PrintNode(torch.nn.Module):
+  def __init__(self, identifier="print:"):
+    super(PrintNode, self).__init__()
+    self.identifier = identifier
+
+  def forward(self, x):
+    print(self.identifier, x.shape)
+    return x

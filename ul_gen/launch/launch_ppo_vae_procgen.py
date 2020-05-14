@@ -7,7 +7,7 @@ import os
 from ul_gen.configs.ppo_vae_procgen_config import configs
 
 affinity_code = encode_affinity(
-    n_cpu_core=12,
+    n_cpu_core=16,
     n_gpu=2,
     # hyperthread_offset=20,
     n_socket=None

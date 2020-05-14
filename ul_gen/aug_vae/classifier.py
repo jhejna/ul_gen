@@ -46,7 +46,8 @@ def train_classifier(model_path, load_checkpoint=True, finetune=False,
     
     num_classes = DATASET_TO_CLASSES[params["dataset"]]
     classifier_layers = []
-    last_dim = params["z_dim"]
+    k_dim = params["k_dim"]
+    last_dim = params["k_dim"]
     for hidden_size in hidden_layers:
         classifier_layers.append(torch.nn.Linear(last_dim, hidden_size))
         last_dim = hidden_size
@@ -84,7 +85,7 @@ def train_classifier(model_path, load_checkpoint=True, finetune=False,
                     else:
                         z = torch.exp(0.5*log_var) * torch.randn_like(mu) + mu
 
-            preds = classifier(z)
+            preds = classifier(z[:, :k_dim])
             loss = criterion(preds, y)
             loss.backward()
             optimizer.step()
@@ -108,7 +109,7 @@ def train_classifier(model_path, load_checkpoint=True, finetune=False,
             z = mu
         else:
             z = torch.exp(0.5*log_var) * torch.randn_like(mu) + mu
-        logits = classifier(z)
+        logits = classifier(z[:,:k_dim])
         preds = torch.argmax(logits, dim=1)
         correct_pts += torch.sum(preds == y).float()
         if num_eval_pts > num_eval_pts:
@@ -118,6 +119,6 @@ def train_classifier(model_path, load_checkpoint=True, finetune=False,
     print("FINAL ACCURACY", final_acc)
 
 if __name__ == "__main__":
-    train_classifier("output/cmnist_vae/aug-vae-50", load_checkpoint=True,
+    train_classifier("output/cmnist_vae_fix/aug-vae-30", load_checkpoint=True,
             finetune=False, lr=1e-3, epochs=5, deterministic=True,
             hidden_layers=[32], activation="relu")

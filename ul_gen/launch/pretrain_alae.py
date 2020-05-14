@@ -13,6 +13,8 @@ from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
 
 from ul_gen.configs.ppo_alae_config import configs
 from ul_gen.models.vae import VaePolicy
+from ul_gen.alae.custom_adam import LREQAdam
+from ul_gen.alae.tracker import LossTracker
 import json
 import argparse
 
@@ -26,7 +28,7 @@ EmptyAgentInfo = namedarraytuple("EmptyAgentInfo", [])
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 affinity_code = encode_affinity(
-    n_cpu_core=10,
+    n_cpu_core=8,
     n_gpu=1,
     # hyperthread_offset=20,
     n_socket=2
@@ -79,8 +81,18 @@ model = ALAEPolicy(**config["model"]).to(device)
 if config["load_path"]:
     model.load_state_dict(torch.load(config["load_path"]))
 # Setup the optimizers
-opt = optim.Adam(model.parameters(), **config["optim"])
+policy_params = itertools.chain(model.policy.parameters(), model.value.parameters())
+self.policy_optimizer = torch.optim.Adam(self.policy_params, lr=self.learning_rate)
 
+decoder_optimizer = LREQAdam([
+    {'params': self.agent.model.alae.decoder.parameters()},
+    {'params': self.agent.model.alae.mapping.parameters()}
+], lr=self.alae_learning_rate, betas=self.adam_betas, weight_decay=0)
+
+encoder_optimizer = LREQAdam([
+    {'params': self.agent.model.alae.encoder.parameters()},
+    {'params': self.agent.model.alae.discriminator.parameters()},
+], lr=self.alae_learning_rate, betas=self.adam_betas, weight_decay=0)
 # Train
 for itr in range(config["train_steps"]):
     samples, _ = sampler.obtain_samples(itr)
