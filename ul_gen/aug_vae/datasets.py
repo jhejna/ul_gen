@@ -12,10 +12,11 @@ import os
 
 class MnistAug(object):
 
-    def __init__(self, output_size=None, resize=None, rotate=None):
+    def __init__(self, output_size=None, resize=None, rotate=None, rot_labels=False):
         self.output_size = output_size
         self.resize = resize
         self.rotate = rotate
+        self.rot_labels = rot_labels
     
     def aug_img(self, img):
         if not self.rotate is None:
@@ -43,6 +44,8 @@ class MnistAug(object):
         bottom_pad = self.output_size - h - top_pad
         img = pad(img, (left_pad, top_pad, right_pad, bottom_pad), fill=0)
         
+        if self.rot_labels:
+            return img, angle
         return img
 
     def manual_img_aug(self, img, rescale=None, rotation=None):
@@ -64,11 +67,24 @@ class MnistAug(object):
         return to_tensor(img)
 
     def __call__(self, sample):
-        aug = sample.copy()
-        orig = to_tensor(self.aug_img(sample))
-        aug = to_tensor(self.aug_img(aug))
+        if self.rot_labels:
+            sample, angle = self.aug_img(sample)
+            # CURRENTLY ONLY WORKS FOR 60 degrees
+            angle_label = None
+            if angle < -20:
+                angle_label = 0
+            elif angle < 20:
+                angle_label = 1
+            else:
+                angle_label = 2
+            
+            return to_tensor(sample), angle_label
+        else:
+            aug = sample.copy()
+            orig = to_tensor(self.aug_img(sample))
+            aug = to_tensor(self.aug_img(aug))
 
-        return {'orig': orig, 'aug': aug}
+            return {'orig': orig, 'aug': aug}
 
 def get_mnist_aug(**kwargs):
     mnist_data = torchvision.datasets.MNIST('~/.pytorch/mnist', train=True, download=True, transform=MnistAug(**kwargs))

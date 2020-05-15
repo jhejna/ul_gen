@@ -5,24 +5,26 @@ from ul_gen.aug_vae.bias_trainer2 import train_bias
 
 params = {
     "img_dim" : 28,
-    "img_channels": 3,
+    "img_channels": 1,
     "batch_size": 96,
     "lr": 1e-4,
-    "z_dim": 15,
-    "k_dim": 12,
+    "pred_loss": 0.0,
+    "z_dim": 11,
+    "k_dim": 10,
     "beta": 1.0,
-    "epochs" : 40,
+    "epochs" : 50,
     "save_freq": 10,
-    "pred_loss" : 20.0,
-    "savepath": "cmnist_holdout_bias_vae3",
-    "dataset": "colored_mnist",
+    "savepath": "mnist_pred_vae",
+    "dataset": "mnist_aug",
     "final_act" : "sigmoid",
-    "arch_type" : 2,
+    "arch_type" : 1,
     "loss_type" : "bce", 
-    "fc_size" : 128,
+    "fc_size" : 512,
     "dataset_args": {
-        "test" : False,
-        "holdout" : [7,8,9]
+        "output_size": 28,
+        "rot_labels" : True,
+        "resize": None,
+        "rotate": (-60, 60),
     }
 }
 

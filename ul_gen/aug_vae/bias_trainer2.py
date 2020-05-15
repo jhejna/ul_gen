@@ -15,11 +15,6 @@ def train_bias(params):
     dataset = get_dataset(params)
     loader = torch.utils.data.DataLoader(dataset, batch_size=params["batch_size"], shuffle=True)
 
-    params["dataset_args"]["test"] = True
-    params["dataset_args"]["holdout"] = []
-    test_data = get_dataset(params)
-    test_loader = torch.utils.data.DataLoader(test_data, batch_size=params["batch_size"], shuffle=True)
-    params["dataset_args"]["test"] = False
     # # Debug: print aug pairs next to each other.
     # from matplotlib import pyplot as plt
     # sample, _, _ = next(iter(loader))
@@ -51,18 +46,20 @@ def train_bias(params):
     pred_loss = params["pred_loss"]
 
 
-    num_labels = 7
-    color_predictor = torch.nn.Sequential(torch.nn.Linear(z_dim, 128),
+    num_labels = 3
+    color_predictor = torch.nn.Sequential(torch.nn.Linear(k_dim, 128),
                                             torch.nn.ReLU(),
                                             torch.nn.Linear(128, num_labels)).to(device)
     color_predictor_optim = torch.optim.Adam(color_predictor.parameters(), lr=params['lr'])
     bias_criterion = torch.nn.CrossEntropyLoss(ignore_index=255)
+    # bias_criterion = torch.nn.MSELoss()
     for epoch in range(params["epochs"]):
-        for x, bias_label, y in loader:
+        for (x, bias_label), y in loader:
             optimizer.zero_grad()
             # Concatenate to feed all the data through
             x = x.to(device)
             y = y.to(device)
+            bias_label = bias_label.to(device) #.float().unsqueeze(-1)
             if params["final_act"] == "tanh":
                 x = 2*x - 1
 
@@ -75,35 +72,33 @@ def train_bias(params):
                 recon_loss = torch.nn.functional.binary_cross_entropy(x_hat, x, reduction='sum') / len(x)
             
             loss = recon_loss + beta * kl_loss
-
             if pred_loss > 0.0:
                 # add the prediction loss.
-                logits = color_predictor(mu)
+                logits = color_predictor(mu[:, :k_dim])
                 pred_dist = F.softmax(logits, dim=1)
-
                 ent_loss = torch.mean(torch.sum(pred_dist * torch.log(pred_dist),1))
-
+                # ent_loss = -1 * bias_criterion(logits, bias_label)
+                vae_bloss_item = ent_loss.item()
                 loss = loss + pred_loss * ent_loss
+            else:
+                vae_bloss_item = 0.0
 
             loss.backward()
             optimizer.step()
 
-            if pred_loss > 0.0:
-                # Train the bias predictor network.
-                color_predictor_optim.zero_grad()
-                mu, _ = model.encoder(x)
-                logits = color_predictor(mu)
+            color_predictor_optim.zero_grad()
+            mu, _ = model.encoder(x)
+            logits = color_predictor(mu[:, :k_dim])
+            
+            bias_loss = bias_criterion(logits, bias_label)
 
-                bias_loss = bias_criterion(logits, y)
+            bias_loss.backward()
+            color_predictor_optim.step()
+            
+            bias_loss_item = bias_loss.item()
+            
 
-                bias_loss.backward()
-                color_predictor_optim.step()
-                
-                bias_loss_item = bias_loss.item()
-            else:
-                bias_loss_item = -1.0
-
-        print('Epoch %d Recon Loss: %.3f KL Loss: %.3f Bias Loss: %.3f' % (epoch+1, recon_loss.item(), kl_loss.item(), bias_loss_item))
+        print('Epoch %d Recon Loss: %.3f KL Loss: %.3f Bias Loss: %.3f Vae Bloss: %.3f' % (epoch+1, recon_loss.item(), kl_loss.item(), bias_loss_item, vae_bloss_item))
         
         if (epoch + 1) % params["save_freq"] == 0:
             # Save reconstructions and samples:
@@ -119,37 +114,6 @@ def train_bias(params):
                 samples = (samples + 1)/2
             save_image(samples.detach().cpu(), os.path.join(savepath, 'samples_' + str(epoch+1) +'.png'), nrow=8)
             
-            # Test Set Reconstructions
-            test_x, _, _ = next(iter(test_loader))
-            test_x = test_x.to(device)
-            
-            test_x_hat, _, _ = model(test_x[:24])
-            recon = torch.cat((test_x[:24], test_x_hat),dim=0) 
-            if params["final_act"] == "tanh":
-                recon = (recon + 1)/2
-            save_image(recon.detach().cpu(), os.path.join(savepath, 'test_recon_' + str(epoch+1) +'.png'), nrow=8)
-
-            # Prep For Interpolations
-            n_interp = 8
-            x_orig, x_aug  = test_x[:n_interp], test_x[n_interp:2*n_interp]
-            z_orig, _ = model.encoder(x_orig)
-            z_aug, _ = model.encoder(x_aug)
-
-            # Regular Interpolations
-            diff_vec = z_aug - z_orig
-            interpolations = []
-            interpolations.append(x_orig)
-            for i in range(1, 9):
-                interpolations.append(model.decoder(z_orig + 0.111111*i*diff_vec))
-            interpolations.append(x_aug)
-            out_interp = torch.zeros(n_interp*10, img_channels, img_dim, img_dim)
-            for i in range(10):
-                for j in range(n_interp):
-                    out_interp[10*j + i, :, :, :] = interpolations[i][j, :, :, :]
-            if params["final_act"] == "tanh":
-                out_interp = (out_interp + 1)/2
-            save_image(out_interp.detach().cpu(), os.path.join(savepath, 'interp_reg_' + str(epoch+1) +'.png'), nrow=10)
-
             torch.save(model.state_dict(), '%s/aug-vae-%d' % (savepath, epoch+1))
             model.train()
 
