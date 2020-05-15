@@ -151,3 +151,5 @@ def train_bias(params):
 
             torch.save(model.state_dict(), '%s/aug-vae-%d' % (savepath, epoch+1))
             model.train()
+
+

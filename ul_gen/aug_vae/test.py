@@ -154,6 +154,8 @@ def pick_recons(model_path_1, model_path_2):
     img_dim = params["img_dim"]
     k_dim = params["k_dim"]
     inds = []
+    errors1 = 0
+    errors2 = 0
     for i, (x, _, _) in enumerate(dataset):
         x = x.unsqueeze(0)
         x_hat1, _, _ = model1(x)
@@ -161,9 +163,13 @@ def pick_recons(model_path_1, model_path_2):
 
         error1 = torch.sum((x_hat1 - x)**2)
         error2 = torch.sum((x_hat2 - x)**2)
-        diff = error1 - error2
-        if diff > 4.0:
-            print(i, diff.item())
+        # diff = error1 - error2
+        # if diff > 4.0:
+        #     print(i, diff.item())
+        errors1 += error1.item()
+        errors2 += error2.item()
+
+        print(i ,errors1, errors2)
     
     # x_hat, _, _ = model(x)
     # recon = torch.cat((x, x_hat),dim=0) 
@@ -259,10 +265,61 @@ def interp_test(model_path):
         out_interp = (out_interp + 1)/2
     save_image(out_interp.detach().cpu(), os.path.join(save_path, 'test_interp_topk.png'), nrow=10)
 
+def double_recon_test(model_path_1, model_path_2):
+    save_path = os.path.dirname(model_path_1)
+    params_path = os.path.join(save_path, 'params.json')
+    with open(params_path, 'r') as fp:
+        params = json.load(fp)
+
+    img_channels = 3
+    img_dim = 28
+    
+    model1 = VAE(img_dim=params["img_dim"], img_channels=params["img_channels"], 
+                                        z_dim=params["z_dim"], final_act=params["final_act"], 
+                                        fc_size=params["fc_size"], arch_type=params["arch_type"]).to(device)
+    model1.load_state_dict(torch.load(model_path_1, map_location=torch.device(device)))
+
+    model2 = VAE(img_dim=params["img_dim"], img_channels=params["img_channels"], 
+                                        z_dim=params["z_dim"], final_act=params["final_act"], 
+                                        fc_size=params["fc_size"], arch_type=params["arch_type"]).to(device)
+    model2.load_state_dict(torch.load(model_path_2, map_location=torch.device(device)))
+
+    # Get the test dataset.
+    params["dataset_args"]["test"] = True
+    params["dataset_args"]["holdout"] = [0,1,2,3,4,5,6]
+
+    dataset = get_dataset(params)
+
+    n_interp = 10
+    x = torch.zeros(n_interp, img_channels, img_dim, img_dim)
+    
+    # Good indicies: 7, 97
+
+    test_indices = [7 +10*i for i in range(n_interp)]
+    for i, index in enumerate(test_indices):
+        x[i] = dataset[index][0]
+
+    x_hat, _, _ = model1(x)
+    recon = torch.cat((x, x_hat),dim=0) 
+    if params["final_act"] == "tanh":
+        recon = (recon + 1)/2
+    save_image(recon.detach().cpu(), os.path.join(save_path, 'model1_recon.png'), nrow=n_interp)
+
+    x_hat, _, _ = model2(x)
+    recon = torch.cat((x, x_hat),dim=0) 
+    if params["final_act"] == "tanh":
+        recon = (recon + 1)/2
+    save_image(recon.detach().cpu(), os.path.join(save_path, 'model2_recon.png'), nrow=n_interp)
+
+
+
 if __name__ == "__main__":
     # pick_recons("/home/joey/berkeley/sp20/cs294-158/final_models/cmnist_vae_fix/aug-vae-50",
     #             "/home/joey/berkeley/sp20/cs294-158/final_models/cmnist_bias_vae_high/aug-vae-50")
-    interp_test("/home/joey/berkeley/sp20/cs294-158/final_models/cmnist_vae_fix/aug-vae-50")
+    # interp_test("/home/joey/berkeley/sp20/cs294-158/final_models/cmnist_vae_fix/aug-vae-50")
+
+    pick_recons("/home/joey/misc/cmnist_holdout_vae/aug-vae-40",
+                      "/home/joey/misc/cmnist_holdout_bias_vae3/aug-vae-40")
 
     # two fives, same color: 15, 23
     # Three different color: 31, 33 
