@@ -13,7 +13,7 @@ params = {
     "beta": 1.0,
     "epochs" : 50,
     "save_freq": 10,
-    "savepath": "mnist_vae_rot",
+    "savepath": "mnist_vae_rot2",
     "dataset": "mnist_aug",
     "final_act" : "sigmoid",
     "arch_type" : 1,
@@ -26,4 +26,4 @@ params = {
     }
 }
 
-train(params, 10)
+train(params)
