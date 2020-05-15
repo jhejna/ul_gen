@@ -16,6 +16,7 @@ def train_bias(params):
     loader = torch.utils.data.DataLoader(dataset, batch_size=params["batch_size"], shuffle=True)
 
     params["dataset_args"]["test"] = True
+    params["dataset_args"]["holdout"] = []
     test_data = get_dataset(params)
     test_loader = torch.utils.data.DataLoader(test_data, batch_size=params["batch_size"], shuffle=True)
     params["dataset_args"]["test"] = False
@@ -53,7 +54,7 @@ def train_bias(params):
     num_labels = 7
     color_predictor = torch.nn.Sequential(torch.nn.Linear(z_dim, 128),
                                             torch.nn.ReLU(),
-                                            torch.nn.Linear(128, num_labels))
+                                            torch.nn.Linear(128, num_labels)).to(device)
     color_predictor_optim = torch.optim.Adam(color_predictor.parameters(), lr=params['lr'])
     bias_criterion = torch.nn.CrossEntropyLoss(ignore_index=255)
     for epoch in range(params["epochs"]):
