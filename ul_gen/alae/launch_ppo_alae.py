@@ -28,7 +28,7 @@ variants, log_dirs = make_variants(*variant_levels)
 print("Variants", variants)
 print("Log_dirs", log_dirs)
 
-script = os.getcwd() + "/launch/train_ppo_alae.py"
+script = os.getcwd() + "/alae/train_ppo_alae.py"
 experiment_title = "ppo_alae"
 default_config_key = "ppo_alae"
 
