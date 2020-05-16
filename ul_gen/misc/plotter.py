@@ -21,8 +21,8 @@ import os
 import pandas as pd
 from matplotlib import pyplot as plt
 
-def generate_plots(dirs, x, y, title):
-    for experiment in dirs:
+def generate_plots(dirs, x, y, title, labels):
+    for i, experiment in enumerate(dirs):
         assert any([d.startswith('run') for d in os.listdir(experiment)]), "Experiment %s did not contain a dir that starts with run".format(experiment)
         # Configure SNS (for use in papers)
         sns.set_context(context="paper", font_scale=1.5)
@@ -36,10 +36,17 @@ def generate_plots(dirs, x, y, title):
             else:
                 data = data.append(run_data)
             print(data)
-        splits = experiment.split('/')[-2:]
+
         if 'CumSteps' in data.columns:
-            x = 'CumSteps'
-        sns.lineplot(x=x, y=y, data=data, ci="sd", label='/'.join(splits))
+            x_label = 'CumSteps'
+        else:
+            x_label = x
+        if len(labels) == 0:
+            splits = experiment.split('/')[-2:]
+            label = '/'.join(splits)
+        else:
+            label = labels[i]
+        sns.lineplot(x=x_label, y=y, data=data, ci="sd", label=label)
     
     plt.title(title)
     plt.savefig(f'./data/plots/{title}.png')
@@ -50,10 +57,12 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--dir", "-d", type=str, required=True, action='append', help="Experiment directories")
+    parser.add_argument("--label", "-l", type=str, required=False, action='append', default=[], help="Labels for experiments")
     parser.add_argument('--title', type=str, required=False, default='', help='Title of plot')
     parser.add_argument("--x", "-x", type=str, required=False, default="Diagnostics/CumSteps", help="X axis")
     parser.add_argument("--y", "-y", type=str, required=False, default="ReturnAverage", help="Y axis")
     args = parser.parse_args()
-    generate_plots(args.dir, args.x, args.y, args.title)
+    
+    generate_plots(args.dir, args.x, args.y, args.title, args.label)
     
     
